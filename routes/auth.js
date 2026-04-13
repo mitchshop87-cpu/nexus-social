@@ -12,10 +12,10 @@ router.post('/register', async (req, res) => {
     if (!name || !email || !password)
       return res.status(400).json({ error: 'All fields required' });
 
-    const [existing] = await db.query(
-      'SELECT id FROM users WHERE email = ?', [email]
+    const existing = await db.query(
+      'SELECT id FROM users WHERE email = $1', [email]
     );
-    if (existing.length > 0)
+    if (existing.rows.length > 0)
       return res.status(400).json({ error: 'Email already exists' });
 
     const hashed = await bcrypt.hash(password, 10);
@@ -23,13 +23,15 @@ router.post('/register', async (req, res) => {
     const avatar = `https://i.pravatar.cc/150?u=${email}`;
 
     await db.query(
-      'INSERT INTO users (id, name, email, password, avatar) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO users (id, name, email, password, avatar) VALUES ($1, $2, $3, $4, $5)',
       [id, name, email, hashed, avatar]
     );
 
-    const token = jwt.sign({ id, name, email }, process.env.JWT_SECRET, {
-      expiresIn: '30d'
-    });
+    const token = jwt.sign(
+      { id, name, email },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
 
     res.json({ token, user: { id, name, email, avatar } });
   } catch (err) {
@@ -44,13 +46,13 @@ router.post('/login', async (req, res) => {
     if (!email || !password)
       return res.status(400).json({ error: 'All fields required' });
 
-    const [users] = await db.query(
-      'SELECT * FROM users WHERE email = ?', [email]
+    const result = await db.query(
+      'SELECT * FROM users WHERE email = $1', [email]
     );
-    if (users.length === 0)
+    if (result.rows.length === 0)
       return res.status(400).json({ error: 'Invalid credentials' });
 
-    const user = users[0];
+    const user = result.rows[0];
     const match = await bcrypt.compare(password, user.password);
     if (!match)
       return res.status(400).json({ error: 'Invalid credentials' });
@@ -83,15 +85,15 @@ router.get('/me', async (req, res) => {
     if (!token) return res.status(401).json({ error: 'No token' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const [users] = await db.query(
-      'SELECT id, name, email, avatar, bio, location, website, followers, following FROM users WHERE id = ?',
+    const result = await db.query(
+      'SELECT id, name, email, avatar, bio, location, website, followers, following FROM users WHERE id = $1',
       [decoded.id]
     );
 
-    if (users.length === 0)
+    if (result.rows.length === 0)
       return res.status(404).json({ error: 'User not found' });
 
-    res.json(users[0]);
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
   }
