@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus Social</title>
+<script src="/socket.io/socket.io.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #13131a;
+  --surface2: #1c1c27;
+  --surface3: #252535;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --accent: #6c63ff;
+  --accent2: #ff6584;
+  --accent3: #43e97b;
+  --text: #f0f0ff;
+  --text2: #9090b0;
+  --text3: #5a5a7a;
+  --radius: 16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
+
+/* AUTH */
+.auth-page { min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#0a0a1f,#1a0a2e); }
+.auth-box { background:var(--surface); border:1px solid var(--border2); border-radius:24px; padding:40px; width:90%; max-width:420px; }
+.auth-logo { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:32px; background:linear-gradient(135deg,#6c63ff,#ff6584); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-align:center; margin-bottom:8px; }
+.auth-sub { text-align:center; color:var(--text3); font-size:14px; margin-bottom:32px; }
+.form-group { margin-bottom:16px; }
+.form-group label { font-size:12px; color:var(--text3); display:block; margin-bottom:6px; font-weight:600; letter-spacing:.5px; }
+.form-group input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:12px 16px; color:var(--text); font-family:inherit; font-size:14px; outline:none; transition:.2s; }
+.form-group input:focus { border-color:var(--accent); }
+.btn { width:100%; padding:13px; border-radius:12px; border:none; cursor:pointer; font-family:inherit; font-size:15px; font-weight:700; transition:.2s; margin-top:8px; }
+.btn-primary { background:linear-gradient(135deg,var(--accent),#8b84ff); color:#fff; }
+.btn-primary:hover { opacity:.9; transform:translateY(-1px); }
+.auth-switch { text-align:center; margin-top:20px; font-size:13px; color:var(--text3); }
+.auth-switch a { color:var(--accent); cursor:pointer; font-weight:600; }
+.error-msg { background:rgba(255,101,132,.1); border:1px solid rgba(255,101,132,.3); color:var(--accent2); padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:16px; display:none; }
+
+/* APP */
+.app { display:none; flex-direction:column; height:100vh; }
+.topbar { display:flex; align-items:center; gap:12px; padding:0 16px; height:56px; background:var(--surface); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:100; }
+.logo { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:22px; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.search-box { flex:1; max-width:280px; position:relative; }
+.search-box input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:50px; padding:8px 16px 8px 34px; color:var(--text); font-family:inherit; font-size:13px; outline:none; }
+.search-box input:focus { border-color:var(--accent); }
+.si { position:absolute; left:11px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:13px; }
+.topbar-nav { display:flex; gap:2px; margin:0 auto; }
+.nav-btn { background:none; border:none; color:var(--text2); cursor:pointer; padding:8px 16px; border-radius:10px; font-size:19px; transition:.15s; }
+.nav-btn:hover { background:var(--surface2); }
+.nav-btn.active { color:var(--accent); background:rgba(108,99,255,.1); }
+.topbar-right { display:flex; gap:8px; align-items:center; margin-left:auto; }
+.icon-btn { width:36px; height:36px; border-radius:50%; background:var(--surface2); border:none; color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:15px; position:relative; transition:.15s; }
+.icon-btn:hover { background:var(--surface3); }
+.badge { position:absolute; top:-1px; right:-1px; width:16px; height:16px; background:var(--accent2); border-radius:50%; font-size:9px; display:flex; align-items:center; justify-content:center; font-weight:700; border:2px solid var(--surface); }
+.user-avt { width:34px; height:34px; border-radius:50%; object-fit:cover; cursor:pointer; border:2px solid var(--accent); }
+
+/* LAYOUT */
+.main { display:flex; flex:1; overflow:hidden; }
+.sidebar { width:240px; padding:12px; overflow-y:auto; flex-shrink:0; }
+.feed { flex:1; overflow-y:auto; padding:20px; }
+.right-bar { width:240px; padding:12px; overflow-y:auto; flex-shrink:0; }
+
+/* SIDEBAR */
+.snav { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:12px; cursor:pointer; transition:.15s; margin-bottom:2px; font-size:13px; font-weight:500; }
+.snav:hover { background:var(--surface2); }
+.snav.active { background:rgba(108,99,255,.12); color:var(--accent); }
+.snav .ic { width:34px; height:34px; border-radius:10px; background:var(--surface2); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+.sec-title { font-size:10px; font-weight:700; color:var(--text3); letter-spacing:1.5px; text-transform:uppercase; padding:12px 12px 6px; }
+
+/* PAGES */
+.page { display:none; max-width:640px; margin:0 auto; }
+.page.active { display:block; }
+
+/* COMPOSER */
+.composer { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+.composer-top { display:flex; gap:10px; }
+.comp-inp { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:50px; padding:10px 18px; color:var(--text); font-family:inherit; font-size:14px; outline:none; transition:.2s; cursor:pointer; }
+.comp-inp:focus { border-radius:12px; border-color:var(--accent); cursor:text; }
+.comp-actions { display:flex; gap:4px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+.ca { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:none; border:none; color:var(--text2); cursor:pointer; padding:8px 4px; border-radius:10px; font-size:12px; font-weight:500; transition:.15s; }
+.ca:hover { background:var(--surface2); color:var(--text); }
+
+/* POSTS */
+.post { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); margin-bottom:14px; overflow:hidden; }
+.post-hdr { display:flex; align-items:center; gap:10px; padding:12px 14px 8px; }
+.post-avt { width:40px; height:40px; border-radius:50%; object-fit:cover; cursor:pointer; }
+.post-info { flex:1; }
+.post-name { font-weight:700; font-size:13px; }
+.post-time { font-size:11px; color:var(--text3); }
+.post-menu-btn { background:none; border:none; color:var(--text3); cursor:pointer; font-size:16px; padding:4px 8px; border-radius:8px; }
+.post-txt { padding:0 14px 10px; font-size:14px; line-height:1.6; }
+.post-img { width:100%; max-height:380px; object-fit:cover; display:block; }
+.post-stats { padding:8px 14px; font-size:11px; color:var(--text3); border-top:1px solid var(--border); display:flex; gap:10px; }
+.post-acts { display:flex; border-top:1px solid var(--border); }
+.pa { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:none; border:none; color:var(--text2); cursor:pointer; padding:9px 4px; border-radius:0; font-size:12px; font-weight:500; transition:.15s; }
+.pa:hover { background:var(--surface2); color:var(--text); }
+.pa.liked { color:var(--accent2); }
+.comments { padding:0 10px 10px; }
+.comment { display:flex; gap:8px; margin-bottom:8px; }
+.cmt-body { background:var(--surface2); border-radius:12px; padding:7px 11px; flex:1; }
+.cmt-name { font-weight:700; font-size:11px; margin-bottom:2px; }
+.cmt-txt { font-size:12px; }
+.cmt-inp-row { display:flex; gap:8px; align-items:center; margin-top:6px; }
+.cmt-inp { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:50px; padding:7px 14px; color:var(--text); font-family:inherit; font-size:12px; outline:none; }
+.cmt-inp:focus { border-color:var(--accent); }
+.send-btn { width:30px; height:30px; border-radius:50%; background:var(--accent); border:none; color:#fff; cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+/* SUGGESTIONS */
+.sug { display:flex; align-items:center; gap:10px; padding:8px 0; }
+.sug-info { flex:1; }
+.sug-name { font-size:13px; font-weight:600; }
+.sug-mut { font-size:11px; color:var(--text3); }
+.add-btn { background:rgba(108,99,255,.15); border:1px solid rgba(108,99,255,.3); color:var(--accent); border-radius:50px; padding:5px 12px; font-size:11px; font-weight:600; cursor:pointer; transition:.15s; white-space:nowrap; }
+.add-btn:hover { background:var(--accent); color:#fff; }
+
+/* FRIENDS ONLINE */
+.friend-row { display:flex; align-items:center; gap:10px; padding:7px 8px; border-radius:10px; cursor:pointer; transition:.15s; }
+.friend-row:hover { background:var(--surface2); }
+.favt { position:relative; }
+.favt img { width:34px; height:34px; border-radius:50%; object-fit:cover; }
+.dot { position:absolute; bottom:1px; right:1px; width:9px; height:9px; border-radius:50%; background:#43e97b; border:2px solid var(--surface); }
+.fname { font-size:12px; font-weight:500; }
+
+/* CHAT */
+.chat-overlay { position:fixed; bottom:16px; right:16px; z-index:500; display:flex; flex-direction:column; gap:8px; }
+.chat-win { width:300px; height:400px; background:var(--surface); border:1px solid var(--border2); border-radius:14px; display:flex; flex-direction:column; box-shadow:0 16px 48px rgba(0,0,0,.5); overflow:hidden; animation:su .2s; }
+@keyframes su { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
+.chat-hdr { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--surface2); border-bottom:1px solid var(--border); flex-shrink:0; }
+.chat-hdr-info { flex:1; }
+.chat-hdr-name { font-size:12px; font-weight:700; }
+.chat-hdr-status { font-size:10px; color:#43e97b; }
+.chat-msgs { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:6px; }
+.msg { max-width:78%; }
+.msg.sent { align-self:flex-end; }
+.msg.recv { align-self:flex-start; }
+.msg-bbl { padding:7px 11px; border-radius:14px; font-size:12px; line-height:1.5; }
+.msg.sent .msg-bbl { background:var(--accent); color:#fff; border-bottom-right-radius:3px; }
+.msg.recv .msg-bbl { background:var(--surface2); border-bottom-left-radius:3px; }
+.msg-t { font-size:9px; color:var(--text3); margin-top:2px; text-align:right; }
+.chat-inp-row { display:flex; gap:6px; align-items:center; padding:8px 10px; border-top:1px solid var(--border); flex-shrink:0; }
+.chat-inp { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:50px; padding:7px 12px; color:var(--text); font-family:inherit; font-size:12px; outline:none; }
+.chat-inp:focus { border-color:var(--accent); }
+.call-btns { display:flex; gap:3px; }
+.cbtn { width:28px; height:28px; border-radius:50%; background:var(--surface2); border:none; color:var(--text2); cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; transition:.15s; }
+.cbtn:hover { background:var(--accent); color:#fff; }
+
+/* CALL MODAL */
+.modal-ov { position:fixed; inset:0; background:rgba(0,0,0,.75); backdrop-filter:blur(8px); z-index:1000; display:flex; align-items:center; justify-content:center; }
+.call-box { background:linear-gradient(135deg,#1a1a3e,#0d0d20); border:1px solid rgba(108,99,255,.3); border-radius:24px; overflow:hidden; width:90%; max-width:380px; }
+.call-vid { height:260px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#1e1e40,#2a1a4e); position:relative; font-size:72px; }
+.call-self-vid { position:absolute; bottom:10px; right:10px; width:76px; height:96px; border-radius:10px; background:var(--surface); border:2px solid var(--accent); display:flex; align-items:center; justify-content:center; font-size:24px; }
+.call-info { text-align:center; padding:16px; }
+.call-name { font-size:20px; font-weight:900; }
+.call-stat { font-size:12px; color:var(--text3); margin-top:3px; }
+.call-timer { font-size:16px; font-weight:700; color:var(--accent); margin-top:6px; }
+.call-ctrls { display:flex; justify-content:center; gap:14px; padding:16px 16px 24px; }
+.cc { width:52px; height:52px; border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:20px; transition:.2s; }
+.cc:hover { transform:scale(1.08); }
+.cc.end { background:#ff4560; color:#fff; }
+.cc.tog { background:var(--surface3); color:var(--text); }
+.cc.tog.on { background:var(--accent); color:#fff; }
+
+/* TOAST */
+.toast { position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:var(--surface3); color:var(--text); padding:9px 18px; border-radius:50px; font-size:12px; font-weight:600; z-index:9999; border:1px solid var(--border2); box-shadow:0 8px 24px rgba(0,0,0,.4); animation:su .2s; pointer-events:none; }
+
+/* LOADING */
+.loading { display:flex; align-items:center; justify-content:center; padding:40px; color:var(--text3); font-size:14px; }
+.spinner { width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin-right:10px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<!-- AUTH PAGE -->
+<div id="authPage" class="auth-page">
+  <div class="auth-box">
+    <div class="auth-logo">Nexus</div>
+    <div class="auth-sub">Connect with the world</div>
+    <div class="error-msg" id="authError"></div>
+    <div id="loginForm">
+      <div class="form-group">
+        <label>EMAIL</label>
+        <input type="email" id="loginEmail" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>PASSWORD</label>
+        <input type="password" id="loginPassword" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary" onclick="login()">Sign In</button>
+      <div class="auth-switch">Don't have an account? <a onclick="showRegister()">Sign Up</a></div>
+    </div>
+    <div id="registerForm" style="display:none">
+      <div class="form-group">
+        <label>FULL NAME</label>
+        <input type="text" id="regName" placeholder="Your name">
+      </div>
+      <div class="form-group">
+        <label>EMAIL</label>
+        <input type="email" id="regEmail" placeholder="your@email.com">
+      </div>
+      <div class="form-group">
+        <label>PASSWORD</label>
+        <input type="password" id="regPassword" placeholder="Min 6 characters">
+      </div>
+      <button class="btn btn-primary" onclick="register()">Create Account</button>
+      <div class="auth-switch">Already have an account? <a onclick="showLogin()">Sign In</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appPage" class="app">
+  <div class="topbar">
+    <div class="logo">Nexus</div>
+    <div class="search-box">
+      <span class="si">🔍</span>
+      <input type="text" placeholder="Search..." oninput="searchUsers(this.value)">
+    </div>
+    <div class="topbar-nav">
+      <button class="nav-btn active" onclick="navigate('feed')" id="nb-feed">🏠</button>
+      <button class="nav-btn" onclick="navigate('friends')" id="nb-friends">👥</button>
+      <button class="nav-btn" onclick="navigate('messages')" id="nb-messages">💬</button>
+      <button class="nav-btn" onclick="navigate('profile')" id="nb-profile">👤</button>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" id="notifBtn" onclick="showToast('Notifications coming soon!')">🔔<span class="badge" id="notifBadge" style="display:none">0</span></button>
+      <img id="topAvt" src="https://i.pravatar.cc/34?img=1" class="user-avt" onclick="navigate('profile')">
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar" id="lsidebar">
+      <div class="snav active" onclick="navigate('feed')" id="ln-feed">
+        <div class="ic">🏠</div><span>Home</span>
+      </div>
+      <div class="snav" onclick="navigate('friends')" id="ln-friends">
+        <div class="ic">👥</div><span>Friends</span>
+      </div>
+      <div class="snav" onclick="navigate('messages')" id="ln-messages">
+        <div class="ic">💬</div><span>Messages</span>
+      </div>
+      <div class="snav" onclick="navigate('profile')" id="ln-profile">
+        <div class="ic">👤</div><span>Profile</span>
+      </div>
+      <div class="snav" onclick="showToast('Groups coming soon!')">
+        <div class="ic">🧩</div><span>Groups</span>
+      </div>
+      <div class="snav" onclick="showToast('Marketplace coming soon!')">
+        <div class="ic">🛒</div><span>Marketplace</span>
+      </div>
+      <div class="sec-title">Account</div>
+      <div class="snav" onclick="logout()">
+        <div class="ic">🚪</div><span>Logout</span>
+      </div>
+    </div>
+
+    <!-- FEED -->
+    <div class="feed" id="mainFeed">
+
+      <!-- FEED PAGE -->
+      <div class="page active" id="page-feed">
+        <div class="composer">
+          <div class="composer-top">
+            <img id="compAvt" src="https://i.pravatar.cc/40?img=1" style="width:40px;height:40px;border-radius:50%;object-fit:cover;">
+            <input class="comp-inp" id="postInput" placeholder="What's on your mind?" onkeydown="if(event.key==='Enter')submitPost()">
+          </div>
+          <div class="comp-actions">
+            <button class="ca" onclick="submitPost()">📷 Photo</button>
+            <button class="ca" onclick="submitPost()">😊 Feeling</button>
+            <button class="ca" onclick="submitPost()">📍 Location</button>
+          </div>
+        </div>
+        <div id="postsContainer"><div class="loading"><div class="spinner"></div>Loading feed...</div></div>
+      </div>
+
+      <!-- FRIENDS PAGE -->
+      <div class="page" id="page-friends">
+        <h2 style="margin-bottom:16px;font-size:20px;">People You May Know</h2>
+        <div id="suggestionsContainer"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+      </div>
+
+      <!-- MESSAGES PAGE -->
+      <div class="page" id="page-messages">
+        <h2 style="margin-bottom:16px;font-size:20px;">Messages</h2>
+        <div id="convoContainer"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+      </div>
+
+      <!-- PROFILE PAGE -->
+      <div class="page" id="page-profile">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px;">
+          <div style="height:180px;background:linear-gradient(135deg,#1a1a5e,#3a1a6e,#6c1a4e);"></div>
+          <div style="display:flex;align-items:flex-end;gap:14px;padding:0 20px;margin-top:-36px;margin-bottom:14px;">
+            <img id="profAvt" src="https://i.pravatar.cc/80?img=1" style="width:80px;height:80px;border-radius:50%;border:3px solid var(--bg);object-fit:cover;">
+            <div style="padding-bottom:8px;flex:1;">
+              <div id="profName" style="font-size:20px;font-weight:900;"></div>
+              <div id="profBio" style="font-size:12px;color:var(--text2);margin-top:3px;"></div>
+            </div>
+            <button onclick="showEditProfile()" style="background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:50px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:8px;">✏️ Edit</button>
+          </div>
+          <div style="display:flex;gap:20px;padding:0 20px 16px;border-top:1px solid var(--border);padding-top:14px;">
+            <div style="text-align:center;"><div id="profPosts" style="font-size:18px;font-weight:800;">0</div><div style="font-size:10px;color:var(--text3);">Posts</div></div>
+            <div style="text-align:center;"><div id="profFollowers" style="font-size:18px;font-weight:800;">0</div><div style="font-size:10px;color:var(--text3);">Friends</div></div>
+          </div>
+        </div>
+        <div id="myPosts"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDEBAR -->
+    <div class="right-bar" id="rsidebar">
+      <div class="sec-title">Suggested</div>
+      <div id="rightSuggestions"><div style="padding:8px;font-size:12px;color:var(--text3);">Loading...</div></div>
+      <div class="sec-title" style="margin-top:12px;">Online Friends</div>
+      <div id="onlineFriends"><div style="padding:8px;font-size:12px;color:var(--text3);">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT OVERLAY -->
+<div class="chat-overlay" id="chatOverlay"></div>
+<!-- MODAL -->
+<div id="modalContainer"></div>
+
+<script>
+const API = '';
+let token = localStorage.getItem('token');
+let currentUser = null;
+let socket = null;
+let chatWindows = {};
+let callTimer = null;
+let callSecs = 0;
+
+// ── AUTH ──
+async function login() {
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  showAuthError('');
+  try {
+    const res = await fetch(`${API}/api/auth/login`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password})
+    });
+    const data = await res.json();
+    if (!res.ok) return showAuthError(data.error);
+    token = data.token;
+    localStorage.setItem('token', token);
+    currentUser = data.user;
+    initApp();
+  } catch(e) { showAuthError('Connection error. Try again.'); }
+}
+
+async function register() {
+  const name = document.getElementById('regName').value;
+  const email = document.getElementById('regEmail').value;
+  const password = document.getElementById('regPassword').value;
+  showAuthError('');
+  try {
+    const res = await fetch(`${API}/api/auth/register`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, email, password})
+    });
+    const data = await res.json();
+    if (!res.ok) return showAuthError(data.error);
+    token = data.token;
+    localStorage.setItem('token', token);
+    currentUser = data.user;
+    initApp();
+  } catch(e) { showAuthError('Connection error. Try again.'); }
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+function showRegister() {
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('registerForm').style.display = 'block';
+}
+
+function showLogin() {
+  document.getElementById('registerForm').style.display = 'none';
+  document.getElementById('loginForm').style.display = 'block';
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  token = null; currentUser = null;
+  document.getElementById('appPage').style.display = 'none';
+  document.getElementById('authPage').style.display = 'flex';
+  showToast('Logged out!');
+}
+
+// ── INIT ──
+async function initApp() {
+  document.getElementById('authPage').style.display = 'none';
+  document.getElementById('appPage').style.display = 'flex';
+
+  if (!currentUser) {
+    const res = await fetch(`${API}/api/auth/me`, { headers: authHeader() });
+    currentUser = await res.json();
+  }
+
+  document.getElementById('topAvt').src = currentUser.avatar || `https://i.pravatar.cc/34?u=${currentUser.id}`;
+  document.getElementById('compAvt').src = currentUser.avatar || `https://i.pravatar.cc/40?u=${currentUser.id}`;
+  document.getElementById('profAvt').src = currentUser.avatar || `https://i.pravatar.cc/80?u=${currentUser.id}`;
+  document.getElementById('profName').textContent = currentUser.name;
+  document.getElementById('profBio').textContent = currentUser.bio || 'No bio yet';
+
+  initSocket();
+  loadFeed();
+  loadSuggestions();
+}
+
+function authHeader() {
+  return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+}
+
+// ── SOCKET ──
+function initSocket() {
+  socket = io();
+  socket.emit('join', currentUser.id);
+  socket.on('receiveMessage', (data) => {
+    if (chatWindows[data.senderName]) {
+      chatWindows[data.senderName].push({sent:false, text:data.text, time:now()});
+      renderChats();
+    } else {
+      showToast(`💬 ${data.senderName}: ${data.text}`);
+    }
+  });
+  socket.on('incomingCall', (data) => {
+    showIncomingCall(data);
+  });
+  socket.on('callEnded', () => {
+    closeModal();
+    showToast('Call ended');
+  });
+}
+
+// ── FEED ──
+async function loadFeed() {
+  const res = await fetch(`${API}/api/posts`, { headers: authHeader() });
+  const posts = await res.json();
+  renderPosts(posts, 'postsContainer');
+}
+
+function renderPosts(posts, containerId) {
+  const el = document.getElementById(containerId);
+  if (!posts || posts.length === 0) {
+    el.innerHTML = '<div class="loading">No posts yet. Be the first to post!</div>';
+    return;
+  }
+  el.innerHTML = posts.map(p => `
+    <div class="post" id="post-${p.id}">
+      <div class="post-hdr">
+        <img src="${p.avatar||`https://i.pravatar.cc/40?u=${p.user_id}`}" class="post-avt">
+        <div class="post-info">
+          <div class="post-name">${p.name}</div>
+          <div class="post-time">${formatTime(p.created_at)}</div>
+        </div>
+        ${p.user_id===currentUser.id?`<button class="post-menu-btn" onclick="deletePost('${p.id}')">🗑️</button>`:''}
+      </div>
+      ${p.text?`<div class="post-txt">${p.text}</div>`:''}
+      ${p.media?`<img src="${p.media}" class="post-img">`:''}
+      <div class="post-stats">
+        <span>❤️ ${p.likes||0}</span>
+        <span>💬 ${p.comment_count||0} comments</span>
+      </div>
+      <div class="post-acts">
+        <button class="pa ${p.liked?'liked':''}" onclick="toggleLike('${p.id}',this)">
+          ${p.liked?'❤️':'🤍'} Like
+        </button>
+        <button class="pa" onclick="toggleComments('${p.id}')">💬 Comment</button>
+        <button class="pa" onclick="showToast('Link copied!')">↗️ Share</button>
+      </div>
+      <div class="comments" id="cmts-${p.id}" style="display:none">
+        <div id="cmtlist-${p.id}"></div>
+        <div class="cmt-inp-row">
+          <img src="${currentUser.avatar||`https://i.pravatar.cc/28?u=${currentUser.id}`}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+          <input class="cmt-inp" placeholder="Write a comment..." onkeydown="if(event.key==='Enter')addComment('${p.id}',this)">
+          <button class="send-btn" onclick="addComment('${p.id}',this.previousElementSibling)">➤</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function submitPost() {
+  const input = document.getElementById('postInput');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const res = await fetch(`${API}/api/posts`, {
+    method:'POST', headers: authHeader(),
+    body: JSON.stringify({text})
+  });
+  if (res.ok) { loadFeed(); showToast('Posted! 🎉'); }
+}
+
+async function toggleLike(postId, btn) {
+  const res = await fetch(`${API}/api/posts/${postId}/like`, {
+    method:'POST', headers: authHeader()
+  });
+  const data = await res.json();
+  btn.className = `pa ${data.liked?'liked':''}`;
+  btn.innerHTML = `${data.liked?'❤️':'🤍'} Like`;
+  loadFeed();
+}
+
+async function toggleComments(postId) {
+  const el = document.getElementById(`cmts-${postId}`);
+  const isHidden = el.style.display === 'none';
+  el.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) {
+    const res = await fetch(`${API}/api/posts/${postId}/comments`, { headers: authHeader() });
+    const comments = await res.json();
+    document.getElementById(`cmtlist-${postId}`).innerHTML = comments.map(c=>`
+      <div class="comment">
+        <img src="${c.avatar||`https://i.pravatar.cc/28?u=${c.user_id}`}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+        <div class="cmt-body">
+          <div class="cmt-name">${c.name}</div>
+          <div class="cmt-txt">${c.text}</div>
+        </div>
+      </div>
+    `).join('') || '<div style="font-size:12px;color:var(--text3);padding:6px">No comments yet</div>';
+  }
+}
+
+async function addComment(postId, input) {
+  if (!input.value.trim()) return;
+  const res = await fetch(`${API}/api/posts/${postId}/comments`, {
+    method:'POST', headers: authHeader(),
+    body: JSON.stringify({text: input.value.trim()})
+  });
+  if (res.ok) { input.value=''; toggleComments(postId); setTimeout(()=>toggleComments(postId),100); }
+}
+
+async function deletePost(postId) {
+  await fetch(`${API}/api/posts/${postId}`, { method:'DELETE', headers: authHeader() });
+  loadFeed();
+  showToast('Post deleted');
+}
+
+// ── SUGGESTIONS ──
+async function loadSuggestions() {
+  try {
+    const res = await fetch(`${API}/api/users/suggestions/all`, { headers: authHeader() });
+    const users = await res.json();
+    const html = users.length ? users.map(u=>`
+      <div class="sug">
+        <img src="${u.avatar||`https://i.pravatar.cc/40?u=${u.id}`}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;">
+        <div class="sug-info">
+          <div class="sug-name">${u.name}</div>
+          <div class="sug-mut">${u.bio||'Nexus user'}</div>
+        </div>
+        <button class="add-btn" onclick="addFriend('${u.id}',this)">+ Add</button>
+      </div>
+    `).join('') : '<div style="font-size:12px;color:var(--text3);padding:8px">No suggestions</div>';
+    document.getElementById('rightSuggestions').innerHTML = html;
+    document.getElementById('suggestionsContainer').innerHTML = users.length ?
+      `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;">${users.map(u=>`
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;text-align:center;">
+          <img src="${u.avatar||`https://i.pravatar.cc/200?u=${u.id}`}" style="width:100%;height:140px;object-fit:cover;display:block;">
+          <div style="padding:12px;">
+            <div style="font-weight:700;font-size:13px;margin-bottom:8px;">${u.name}</div>
+            <button onclick="addFriend('${u.id}',this)" style="background:var(--accent);border:none;color:#fff;border-radius:50px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;width:100%;">+ Add Friend</button>
+          </div>
+        </div>
+      `).join('')}</div>` : '<div class="loading">No suggestions right now</div>';
+
+    document.getElementById('onlineFriends').innerHTML = users.slice(0,4).map(u=>`
+      <div class="friend-row" onclick="openChat('${u.name}','${u.id}','${u.avatar||''}')">
+        <div class="favt">
+          <img src="${u.avatar||`https://i.pravatar.cc/34?u=${u.id}`}">
+          <div class="dot"></div>
+        </div>
+        <div class="fname">${u.name}</div>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+async function addFriend(userId, btn) {
+  await fetch(`${API}/api/users/${userId}/friend`, { method:'POST', headers: authHeader() });
+  btn.textContent = '✓ Sent';
+  btn.style.background = 'var(--accent3)';
+  btn.style.color = '#fff';
+  showToast('Friend request sent!');
+}
+
+// ── MESSAGES ──
+async function loadConversations() {
+  const res = await fetch(`${API}/api/messages/conversations`, { headers: authHeader() });
+  const convos = await res.json();
+  const el = document.getElementById('convoContainer');
+  el.innerHTML = convos.length ? convos.map(c=>`
+    <div onclick="openChat('${c.name}','${c.id}','${c.avatar||''}')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;cursor:pointer;margin-bottom:8px;transition:.15s;" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+      <img src="${c.avatar||`https://i.pravatar.cc/44?u=${c.id}`}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:13px;">${c.name}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px;">${c.last_message||'No messages yet'}</div>
+      </div>
+      ${c.unread>0?`<span style="background:var(--accent);color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;">${c.unread}</span>`:''}
+    </div>
+  `).join('') : '<div class="loading">No conversations yet. Start chatting!</div>';
+}
+
+// ── CHAT ──
+async function openChat(name, userId, avatar) {
+  if (chatWindows[name]) return;
+  chatWindows[name] = { userId, avatar, msgs:[] };
+  const res = await fetch(`${API}/api/messages/${userId}`, { headers: authHeader() });
+  const msgs = await res.json();
+  chatWindows[name].msgs = msgs.map(m=>({
+    sent: m.sender_id === currentUser.id,
+    text: m.text,
+    time: formatTime(m.created_at)
+  }));
+  renderChats();
+}
+
+function renderChats() {
+  document.getElementById('chatOverlay').innerHTML = Object.entries(chatWindows).map(([name,data])=>`
+    <div class="chat-win">
+      <div class="chat-hdr">
+        <img src="${data.avatar||`https://i.pravatar.cc/34?u=${data.userId}`}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+        <div class="chat-hdr-info">
+          <div class="chat-hdr-name">${name}</div>
+          <div class="chat-hdr-status">● Active</div>
+        </div>
+        <div class="call-btns">
+          <button class="cbtn" onclick="startCall('${name}','${data.userId}','audio')" title="Voice call">📞</button>
+          <button class="cbtn" onclick="startCall('${name}','${data.userId}','video')" title="Video call">📹</button>
+          <button class="cbtn" onclick="closeChat('${name}')">✕</button>
+        </div>
+      </div>
+      <div class="chat-msgs" id="msgs-${name.replace(/\s/g,'_')}">
+        ${data.msgs.map(m=>`
+          <div class="msg ${m.sent?'sent':'recv'}">
+            <div class="msg-bbl">${m.text}</div>
+            <div class="msg-t">${m.time}</div>
+          </div>
+        `).join('')}
+      </div>
+      <div class="chat-inp-row">
+        <input class="chat-inp" placeholder="Aa" onkeydown="if(event.key==='Enter')sendMsg('${name}','${data.userId}',this)">
+        <button class="send-btn" onclick="sendMsg('${name}','${data.userId}',this.previousElementSibling)">➤</button>
+      </div>
+    </div>
+  `).join('');
+  Object.keys(chatWindows).forEach(name=>{
+    const el = document.getElementById('msgs-'+name.replace(/\s/g,'_'));
+    if(el) el.scrollTop = el.scrollHeight;
+  });
+}
+
+async function sendMsg(name, userId, input) {
+  if (!input.value.trim()) return;
+  const text = input.value.trim();
+  input.value = '';
+  const res = await fetch(`${API}/api/messages/${userId}`, {
+    method:'POST', headers: authHeader(),
+    body: JSON.stringify({text})
+  });
+  if (res.ok) {
+    chatWindows[name].msgs.push({sent:true, text, time:now()});
+    renderChats();
+    socket.emit('sendMessage', {
+      receiverId: userId,
+      senderName: currentUser.name,
+      text
+    });
+  }
+}
+
+function closeChat(name) {
+  delete chatWindows[name];
+  renderChats();
+}
+
+// ── CALLS ──
+function startCall(name, userId, type) {
+  callSecs = 0;
+  const isVideo = type === 'video';
+  socket.emit('callUser', { receiverId: userId, callerName: currentUser.name, type });
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-ov" onclick="">
+      <div class="call-box">
+        <div class="call-vid">${isVideo?'🧑‍💻':'📞'}<div class="call-self-vid">${isVideo?'😊':'🎙️'}</div></div>
+        <div class="call-info">
+          <div class="call-name">${name}</div>
+          <div class="call-stat">${isVideo?'Video':'Voice'} Call</div>
+          <div class="call-timer" id="callTimer">Calling...</div>
+        </div>
+        <div class="call-ctrls">
+          <button class="cc tog on" onclick="toggleCC(this,'🎙️','🔇')">🎙️</button>
+          ${isVideo?`<button class="cc tog on" onclick="toggleCC(this,'📹','🚫')">📹</button>`:''}
+          <button class="cc tog" onclick="toggleCC(this,'🔊','🔕')">🔊</button>
+          <button class="cc end" onclick="endCall('${userId}')">📵</button>
+        </div>
+      </div>
+    </div>`;
+  setTimeout(()=>{
+    const el = document.getElementById('callTimer');
+    if(el){ el.textContent='00:00'; startTimer(); }
+  }, 1500);
+}
+
+function showIncomingCall(data) {
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-ov">
+      <div class="call-box">
+        <div class="call-vid" style="font-size:64px;">📞</div>
+        <div class="call-info">
+          <div class="call-name">${data.callerName}</div>
+          <div class="call-stat">Incoming ${data.type} call...</div>
+        </div>
+        <div class="call-ctrls">
+          <button class="cc tog on" style="background:#43e97b;" onclick="showToast('Call answered!');closeModal()">📞</button>
+          <button class="cc end" onclick="closeModal();showToast('Call declined')">📵</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function startTimer() {
+  callTimer = setInterval(()=>{
+    callSecs++;
+    const el = document.getElementById('callTimer');
+    if(!el){ clearInterval(callTimer); return; }
+    el.textContent = `${String(Math.floor(callSecs/60)).padStart(2,'0')}:${String(callSecs%60).padStart(2,'0')}`;
+  },1000);
+}
+
+function endCall(userId) {
+  clearInterval(callTimer);
+  socket.emit('endCall', { receiverId: userId });
+  closeModal();
+  showToast('Call ended');
+}
+
+function toggleCC(btn, on, off) {
+  btn.classList.toggle('on');
+  btn.textContent = btn.classList.contains('on') ? on : off;
+}
+
+function closeModal() {
+  document.getElementById('modalContainer').innerHTML = '';
+  clearInterval(callTimer);
+}
+
+// ── PROFILE ──
+function showEditProfile() {
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-ov" onclick="if(event.target===this)closeModal()">
+      <div style="background:var(--surface);border:1px solid var(--border2);border-radius:20px;padding:24px;width:90%;max-width:460px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div style="font-size:17px;font-weight:800;">Edit Profile</div>
+          <button onclick="closeModal()" style="background:var(--surface2);border:none;color:var(--text);cursor:pointer;width:30px;height:30px;border-radius:50%;font-size:14px;">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px;">NAME</label>
+          <input id="ep-name" value="${currentUser.name}" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;"></div>
+          <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px;">BIO</label>
+          <textarea id="ep-bio" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;resize:none;height:80px;">${currentUser.bio||''}</textarea></div>
+          <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:5px;">LOCATION</label>
+          <input id="ep-loc" value="${currentUser.location||''}" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;"></div>
+          <button onclick="saveProfile()" style="background:var(--accent);border:none;color:#fff;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Save Changes</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function saveProfile() {
+  const name = document.getElementById('ep-name').value;
+  const bio = document.getElementById('ep-bio').value;
+  const location = document.getElementById('ep-loc').value;
+  await fetch(`${API}/api/users/profile`, {
+    method:'PUT', headers: authHeader(),
+    body: JSON.stringify({name, bio, location, avatar: currentUser.avatar, website: currentUser.website})
+  });
+  currentUser.name = name;
+  currentUser.bio = bio;
+  document.getElementById('profName').textContent = name;
+  document.getElementById('profBio').textContent = bio || 'No bio yet';
+  closeModal();
+  showToast('Profile updated! ✅');
+}
+
+// ── NAVIGATE ──
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const nb = document.getElementById('nb-'+page);
+  if(nb) nb.classList.add('active');
+  document.querySelectorAll('[id^="ln-"]').forEach(b=>b.classList.remove('active'));
+  const lb = document.getElementById('ln-'+page);
+  if(lb) lb.classList.add('active');
+  if(page==='friends') loadSuggestions();
+  if(page==='messages') loadConversations();
+  if(page==='profile') loadMyPosts();
+}
+
+async function loadMyPosts() {
+  const res = await fetch(`${API}/api/posts`, { headers: authHeader() });
+  const posts = await res.json();
+  const mine = posts.filter(p=>p.user_id===currentUser.id);
+  document.getElementById('profPosts').textContent = mine.length;
+  renderPosts(mine, 'myPosts');
+}
+
+async function searchUsers(query) {
+  if (!query.trim()) return;
+  const res = await fetch(`${API}/api/users/search/${query}`, { headers: authHeader() });
+  const users = await res.json();
+  if (users.length) showToast(`Found ${users.length} user(s) for "${query}"`);
+}
+
+// ── UTILS ──
+function formatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const diff = (Date.now()-d)/1000;
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  return d.toLocaleDateString();
+}
+
+function now() {
+  return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(), 2500);
+}
+
+// ── AUTO LOGIN ──
+if (token) { initApp(); }
+</script>
+</body>
+  </html>
