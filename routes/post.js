@@ -1,101 +1,141 @@
 const express = require('express');
 const router = express.Router();
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const jwt = require('jsonwebtoken');
 const db = require('../database');
 
-// Register
-router.post('/register', async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password)
-      return res.status(400).json({ error: 'All fields required' });
-
-    const existing = await db.query(
-      'SELECT id FROM users WHERE email = $1', [email]
-    );
-    if (existing.rows.length > 0)
-      return res.status(400).json({ error: 'Email already exists' });
-
-    const hashed = await bcrypt.hash(password, 10);
-    const id = uuidv4();
-    const avatar = `https://i.pravatar.cc/150?u=${email}`;
-
-    await db.query(
-      'INSERT INTO users (id, name, email, password, avatar) VALUES ($1, $2, $3, $4, $5)',
-      [id, name, email, hashed, avatar]
-    );
-
-    const token = jwt.sign(
-      { id, name, email },
-      process.env.JWT_SECRET,
-      { expiresIn: '30d' }
-    );
-
-    res.json({ token, user: { id, name, email, avatar } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Login
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password)
-      return res.status(400).json({ error: 'All fields required' });
-
-    const result = await db.query(
-      'SELECT * FROM users WHERE email = $1', [email]
-    );
-    if (result.rows.length === 0)
-      return res.status(400).json({ error: 'Invalid credentials' });
-
-    const user = result.rows[0];
-    const match = await bcrypt.compare(password, user.password);
-    if (!match)
-      return res.status(400).json({ error: 'Invalid credentials' });
-
-    const token = jwt.sign(
-      { id: user.id, name: user.name, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '30d' }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        bio: user.bio
-      }
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get current user
-router.get('/me', async (req, res) => {
+function auth(req, res, next) {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'No token' });
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+}
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const result = await db.query(
-      'SELECT id, name, email, avatar, bio, location, website, followers, following FROM users WHERE id = $1',
-      [decoded.id]
+// Get all posts
+router.get('/', auth, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT p.*, u.name, u.avatar,
+      (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as likes,
+      (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
+      (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND user_id = $1) as liked
+      FROM posts p
+      JOIN users u ON p.user_id = u.id
+      ORDER BY p.created_at DESC
+      LIMIT 50
+    `, [req.user.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Create post
+router.post('/', auth, async (req, res) => {
+  try {
+    const { text, media } = req.body;
+    if (!text && !media)
+      return res.status(400).json({ error: 'Post cannot be empty' });
+
+    const id = uuidv4();
+    await db.query(
+      'INSERT INTO posts (id, user_id, text, media) VALUES ($1, $2, $3, $4)',
+      [id, req.user.id, text, media || '']
     );
 
-    if (result.rows.length === 0)
-      return res.status(404).json({ error: 'User not found' });
+    const result = await db.query(`
+      SELECT p.*, u.name, u.avatar
+      FROM posts p JOIN users u ON p.user_id = u.id
+      WHERE p.id = $1
+    `, [id]);
 
     res.json(result.rows[0]);
   } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete post
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    await db.query(
+      'DELETE FROM posts WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Like / Unlike
+router.post('/:id/like', auth, async (req, res) => {
+  try {
+    const existing = await db.query(
+      'SELECT id FROM likes WHERE post_id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+
+    if (existing.rows.length > 0) {
+      await db.query(
+        'DELETE FROM likes WHERE post_id = $1 AND user_id = $2',
+        [req.params.id, req.user.id]
+      );
+      res.json({ liked: false });
+    } else {
+      await db.query(
+        'INSERT INTO likes (id, post_id, user_id) VALUES ($1, $2, $3)',
+        [uuidv4(), req.params.id, req.user.id]
+      );
+      res.json({ liked: true });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get comments
+router.get('/:id/comments', auth, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT c.*, u.name, u.avatar
+      FROM comments c
+      JOIN users u ON c.user_id = u.id
+      WHERE c.post_id = $1
+      ORDER BY c.created_at ASC
+    `, [req.params.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add comment
+router.post('/:id/comments', auth, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text)
+      return res.status(400).json({ error: 'Comment cannot be empty' });
+
+    const id = uuidv4();
+    await db.query(
+      'INSERT INTO comments (id, post_id, user_id, text) VALUES ($1, $2, $3, $4)',
+      [id, req.params.id, req.user.id, text]
+    );
+
+    const result = await db.query(`
+      SELECT c.*, u.name, u.avatar
+      FROM comments c JOIN users u ON c.user_id = u.id
+      WHERE c.id = $1
+    `, [id]);
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
