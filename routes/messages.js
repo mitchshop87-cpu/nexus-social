@@ -4,7 +4,6 @@ const { v4: uuidv4 } = require('uuid');
 const jwt = require('jsonwebtoken');
 const db = require('../database');
 
-// Auth middleware
 function auth(req, res, next) {
   try {
     const token = req.headers.authorization?.split(' ')[1];
@@ -19,24 +18,24 @@ function auth(req, res, next) {
 // Get all conversations
 router.get('/conversations', auth, async (req, res) => {
   try {
-    const [convos] = await db.query(`
-      SELECT 
+    const result = await db.query(`
+      SELECT DISTINCT ON (u.id)
         u.id, u.name, u.avatar,
         m.text as last_message,
         m.created_at as last_time,
-        SUM(CASE WHEN m.read_status=0 
-          AND m.receiver_id=? THEN 1 ELSE 0 END) as unread
+        COUNT(CASE WHEN m.read_status=false
+          AND m.receiver_id=$1 THEN 1 END) as unread
       FROM messages m
       JOIN users u ON (
-        CASE WHEN m.sender_id=? 
+        CASE WHEN m.sender_id=$2
         THEN m.receiver_id=u.id
         ELSE m.sender_id=u.id END
       )
-      WHERE m.sender_id=? OR m.receiver_id=?
+      WHERE m.sender_id=$3 OR m.receiver_id=$4
       GROUP BY u.id, u.name, u.avatar, m.text, m.created_at
-      ORDER BY m.created_at DESC
+      ORDER BY u.id, m.created_at DESC
     `, [req.user.id, req.user.id, req.user.id, req.user.id]);
-    res.json(convos);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -45,14 +44,14 @@ router.get('/conversations', auth, async (req, res) => {
 // Get messages between two users
 router.get('/:userId', auth, async (req, res) => {
   try {
-    const [messages] = await db.query(`
-      SELECT m.*, 
-        u.name as sender_name, 
+    const result = await db.query(`
+      SELECT m.*,
+        u.name as sender_name,
         u.avatar as sender_avatar
       FROM messages m
       JOIN users u ON m.sender_id = u.id
-      WHERE (m.sender_id=? AND m.receiver_id=?)
-      OR (m.sender_id=? AND m.receiver_id=?)
+      WHERE (m.sender_id=$1 AND m.receiver_id=$2)
+      OR (m.sender_id=$3 AND m.receiver_id=$4)
       ORDER BY m.created_at ASC
       LIMIT 100
     `, [
@@ -60,13 +59,12 @@ router.get('/:userId', auth, async (req, res) => {
       req.params.userId, req.user.id
     ]);
 
-    // Mark messages as read
     await db.query(
-      'UPDATE messages SET read_status=1 WHERE sender_id=? AND receiver_id=?',
+      'UPDATE messages SET read_status=true WHERE sender_id=$1 AND receiver_id=$2',
       [req.params.userId, req.user.id]
     );
 
-    res.json(messages);
+    res.json(result.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -81,17 +79,17 @@ router.post('/:userId', auth, async (req, res) => {
 
     const id = uuidv4();
     await db.query(
-      'INSERT INTO messages (id, sender_id, receiver_id, text) VALUES (?, ?, ?, ?)',
+      'INSERT INTO messages (id, sender_id, receiver_id, text) VALUES ($1, $2, $3, $4)',
       [id, req.user.id, req.params.userId, text]
     );
 
-    const [messages] = await db.query(`
+    const result = await db.query(`
       SELECT m.*, u.name as sender_name, u.avatar as sender_avatar
       FROM messages m JOIN users u ON m.sender_id=u.id
-      WHERE m.id=?
+      WHERE m.id=$1
     `, [id]);
 
-    res.json(messages[0]);
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -101,7 +99,7 @@ router.post('/:userId', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     await db.query(
-      'DELETE FROM messages WHERE id=? AND sender_id=?',
+      'DELETE FROM messages WHERE id=$1 AND sender_id=$2',
       [req.params.id, req.user.id]
     );
     res.json({ success: true });
@@ -113,11 +111,11 @@ router.delete('/:id', auth, async (req, res) => {
 // Get unread count
 router.get('/unread/count', auth, async (req, res) => {
   try {
-    const [result] = await db.query(
-      'SELECT COUNT(*) as count FROM messages WHERE receiver_id=? AND read_status=0',
+    const result = await db.query(
+      'SELECT COUNT(*) as count FROM messages WHERE receiver_id=$1 AND read_status=false',
       [req.user.id]
     );
-    res.json({ count: result[0].count });
+    res.json({ count: result.rows[0].count });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
