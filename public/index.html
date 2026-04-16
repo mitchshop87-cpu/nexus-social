@@ -1,9 +1,16 @@
-<! DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nexus Social</title>
+<meta name="description" content="Connect with the world on Nexus Social">
+<meta name="theme-color" content="#6c63ff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nexus">
+<link rel="manifest" id="manifest-placeholder">
 <script src="/socket.io/socket.io.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
@@ -26,7 +33,121 @@
 body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
 
-/* AUTH */
+/* ── PWA INSTALL POPUP ── */
+.pwa-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(12px);
+  z-index: 9998;
+  display: flex; align-items: flex-end; justify-content: center;
+  animation: fadeIn .3s ease;
+}
+.pwa-backdrop.hiding { animation: fadeOut .3s ease forwards; }
+
+.pwa-sheet {
+  background: linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  border: 1px solid rgba(108,99,255,0.3);
+  border-radius: 28px 28px 0 0;
+  padding: 8px 0 0;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 -24px 80px rgba(108,99,255,0.2);
+  animation: slideUp .4s cubic-bezier(.34,1.56,.64,1);
+  overflow: hidden;
+}
+
+.pwa-handle {
+  width: 40px; height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+  margin: 0 auto 20px;
+}
+
+.pwa-body { padding: 0 24px 32px; }
+
+.pwa-top {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
+}
+.pwa-icon {
+  width: 64px; height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #6c63ff, #ff6584);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+  box-shadow: 0 8px 24px rgba(108,99,255,0.4);
+}
+.pwa-title-block { flex: 1; }
+.pwa-app-name {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  font-weight: 900; font-size: 22px;
+  background: linear-gradient(135deg, #a78bfa, #f472b6);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.pwa-domain { font-size: 12px; color: var(--text3); margin-top: 3px; }
+
+.pwa-desc {
+  font-size: 14px; color: var(--text2); line-height: 1.6;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.pwa-features {
+  display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;
+}
+.pwa-feat {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(108,99,255,0.1);
+  border: 1px solid rgba(108,99,255,0.2);
+  border-radius: 50px; padding: 5px 12px;
+  font-size: 11px; color: var(--text2); font-weight: 500;
+}
+
+.pwa-actions { display: flex; flex-direction: column; gap: 10px; }
+
+.pwa-btn-install {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, #6c63ff, #8b84ff);
+  border: none; border-radius: 14px;
+  color: #fff; font-family: inherit; font-size: 15px; font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: .2s; box-shadow: 0 8px 24px rgba(108,99,255,0.35);
+}
+.pwa-btn-install:hover { transform: translateY(-1px); box-shadow: 0 12px 32px rgba(108,99,255,0.45); }
+.pwa-btn-install:active { transform: translateY(0); }
+
+.pwa-btn-later {
+  width: 100%; padding: 12px;
+  background: transparent;
+  border: 1px solid var(--border2); border-radius: 14px;
+  color: var(--text3); font-family: inherit; font-size: 13px;
+  cursor: pointer; transition: .2s;
+}
+.pwa-btn-later:hover { background: rgba(255,255,255,0.04); color: var(--text2); }
+
+/* iOS instructions overlay */
+.ios-sheet { padding: 20px 24px 32px; }
+.ios-title { font-family: 'Cabinet Grotesk', sans-serif; font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+.ios-sub { font-size: 12px; color: var(--text3); margin-bottom: 20px; }
+.ios-steps { display: flex; flex-direction: column; gap: 14px; }
+.ios-step {
+  display: flex; align-items: center; gap: 12px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px 14px;
+}
+.ios-step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; flex-shrink: 0;
+}
+.ios-step-txt { font-size: 13px; line-height: 1.4; }
+.ios-step-txt strong { color: var(--text); }
+
+/* ── AUTH ── */
 .auth-page { min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#0a0a1f,#1a0a2e); }
 .auth-box { background:var(--surface); border:1px solid var(--border2); border-radius:24px; padding:40px; width:90%; max-width:420px; }
 .auth-logo { font-family:'Cabinet Grotesk',sans-serif; font-weight:900; font-size:32px; background:linear-gradient(135deg,#6c63ff,#ff6584); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-align:center; margin-bottom:8px; }
@@ -129,7 +250,7 @@ h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
 
 /* CHAT */
 .chat-overlay { position:fixed; bottom:16px; right:16px; z-index:500; display:flex; flex-direction:column; gap:8px; }
-.chat-win { width:300px; height:400px; background:var(--surface); border:1px solid var(--border2); border-radius:14px; display:flex; flex-direction:column; box-shadow:0 16px 48px rgba(0,0,0,.5); overflow:hidden; animation:su .2s; }
+.chat-win { width:300px; height:420px; background:var(--surface); border:1px solid var(--border2); border-radius:14px; display:flex; flex-direction:column; box-shadow:0 16px 48px rgba(0,0,0,.5); overflow:hidden; animation:su .2s; }
 @keyframes su { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
 .chat-hdr { display:flex; align-items:center; gap:8px; padding:10px 12px; background:var(--surface2); border-bottom:1px solid var(--border); flex-shrink:0; }
 .chat-hdr-info { flex:1; }
@@ -139,32 +260,72 @@ h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
 .msg { max-width:78%; }
 .msg.sent { align-self:flex-end; }
 .msg.recv { align-self:flex-start; }
-.msg-bbl { padding:7px 11px; border-radius:14px; font-size:12px; line-height:1.5; }
+.msg-bbl { padding:7px 11px; border-radius:14px; font-size:12px; line-height:1.5; word-break:break-word; }
 .msg.sent .msg-bbl { background:var(--accent); color:#fff; border-bottom-right-radius:3px; }
 .msg.recv .msg-bbl { background:var(--surface2); border-bottom-left-radius:3px; }
 .msg-t { font-size:9px; color:var(--text3); margin-top:2px; text-align:right; }
+.msg-status { font-size:9px; color:var(--text3); text-align:right; margin-top:1px; }
 .chat-inp-row { display:flex; gap:6px; align-items:center; padding:8px 10px; border-top:1px solid var(--border); flex-shrink:0; }
 .chat-inp { flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:50px; padding:7px 12px; color:var(--text); font-family:inherit; font-size:12px; outline:none; }
 .chat-inp:focus { border-color:var(--accent); }
+.chat-typing { font-size:10px; color:var(--text3); padding:2px 10px; height:16px; flex-shrink:0; }
 .call-btns { display:flex; gap:3px; }
 .cbtn { width:28px; height:28px; border-radius:50%; background:var(--surface2); border:none; color:var(--text2); cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; transition:.15s; }
 .cbtn:hover { background:var(--accent); color:#fff; }
 
-/* CALL MODAL */
-.modal-ov { position:fixed; inset:0; background:rgba(0,0,0,.75); backdrop-filter:blur(8px); z-index:1000; display:flex; align-items:center; justify-content:center; }
-.call-box { background:linear-gradient(135deg,#1a1a3e,#0d0d20); border:1px solid rgba(108,99,255,.3); border-radius:24px; overflow:hidden; width:90%; max-width:380px; }
-.call-vid { height:260px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#1e1e40,#2a1a4e); position:relative; font-size:72px; }
-.call-self-vid { position:absolute; bottom:10px; right:10px; width:76px; height:96px; border-radius:10px; background:var(--surface); border:2px solid var(--accent); display:flex; align-items:center; justify-content:center; font-size:24px; }
-.call-info { text-align:center; padding:16px; }
-.call-name { font-size:20px; font-weight:900; }
+/* ── FULL WEBRTC CALL MODAL ── */
+.modal-ov { position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(12px); z-index:1000; display:flex; align-items:center; justify-content:center; }
+.call-box { background:linear-gradient(135deg,#1a1a3e,#0d0d20); border:1px solid rgba(108,99,255,.3); border-radius:24px; overflow:hidden; width:90%; max-width:480px; box-shadow:0 24px 80px rgba(0,0,0,.6); }
+
+/* Video call layout */
+.call-video-area { position:relative; height:320px; background:#000; overflow:hidden; }
+.call-remote-video { width:100%; height:100%; object-fit:cover; background:#111; }
+.call-remote-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; background:linear-gradient(135deg,#1e1e40,#2a1a4e); font-size:72px; }
+.call-self-video-wrap { position:absolute; bottom:12px; right:12px; width:96px; height:120px; border-radius:12px; overflow:hidden; border:2px solid var(--accent); background:#000; box-shadow:0 4px 16px rgba(0,0,0,.5); }
+.call-self-video { width:100%; height:100%; object-fit:cover; }
+.call-self-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:var(--surface); font-size:26px; }
+
+/* Audio call layout */
+.call-audio-area { height:220px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:linear-gradient(135deg,#1e1e40,#2a1a4e); }
+.call-audio-avatar { width:96px; height:96px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex; align-items:center; justify-content:center; font-size:40px; position:relative; }
+.call-audio-pulse { position:absolute; inset:-6px; border-radius:50%; border:2px solid var(--accent); animation:callPulse 1.5s ease-in-out infinite; opacity:.4; }
+.call-audio-pulse2 { position:absolute; inset:-14px; border-radius:50%; border:1px solid var(--accent); animation:callPulse 1.5s ease-in-out infinite .4s; opacity:.2; }
+@keyframes callPulse { 0%,100%{transform:scale(1);opacity:.4} 50%{transform:scale(1.05);opacity:.1} }
+
+.call-info { text-align:center; padding:14px 16px 0; }
+.call-name { font-size:20px; font-weight:900; font-family:'Cabinet Grotesk',sans-serif; }
 .call-stat { font-size:12px; color:var(--text3); margin-top:3px; }
-.call-timer { font-size:16px; font-weight:700; color:var(--accent); margin-top:6px; }
-.call-ctrls { display:flex; justify-content:center; gap:14px; padding:16px 16px 24px; }
+.call-timer { font-size:18px; font-weight:700; color:var(--accent); margin-top:6px; font-variant-numeric:tabular-nums; }
+
+.call-ctrls { display:flex; justify-content:center; gap:12px; padding:16px 16px 24px; }
 .cc { width:52px; height:52px; border-radius:50%; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:20px; transition:.2s; }
 .cc:hover { transform:scale(1.08); }
-.cc.end { background:#ff4560; color:#fff; }
+.cc.end { background:#ff4560; color:#fff; box-shadow:0 4px 16px rgba(255,69,96,.4); }
 .cc.tog { background:var(--surface3); color:var(--text); }
-.cc.tog.on { background:var(--accent); color:#fff; }
+.cc.tog.on { background:rgba(108,99,255,.2); color:var(--accent); border:1px solid rgba(108,99,255,.3); }
+.cc.tog.muted { background:rgba(255,101,132,.15); color:var(--accent2); }
+
+/* CALL NOTIFICATION BANNER */
+.call-banner {
+  position:fixed; top:0; left:0; right:0;
+  background:linear-gradient(135deg,#1a3a1a,#1a2a1a);
+  border-bottom:1px solid rgba(67,233,123,.3);
+  padding:12px 20px;
+  display:flex; align-items:center; gap:14px;
+  z-index:2000;
+  animation:slideDown .3s ease;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);
+}
+@keyframes slideDown { from{transform:translateY(-100%)} to{transform:translateY(0)} }
+.call-banner-avt { width:44px; height:44px; border-radius:50%; border:2px solid var(--accent3); flex-shrink:0; }
+.call-banner-info { flex:1; }
+.call-banner-name { font-weight:700; font-size:14px; }
+.call-banner-type { font-size:11px; color:var(--accent3); margin-top:2px; }
+.call-banner-btns { display:flex; gap:8px; }
+.cbb { padding:8px 16px; border-radius:50px; border:none; font-size:12px; font-weight:700; cursor:pointer; transition:.15s; }
+.cbb.accept { background:var(--accent3); color:#000; }
+.cbb.decline { background:#ff4560; color:#fff; }
+.cbb:hover { transform:scale(1.04); }
 
 /* TOAST */
 .toast { position:fixed; bottom:70px; left:50%; transform:translateX(-50%); background:var(--surface3); color:var(--text); padding:9px 18px; border-radius:50px; font-size:12px; font-weight:600; z-index:9999; border:1px solid var(--border2); box-shadow:0 8px 24px rgba(0,0,0,.4); animation:su .2s; pointer-events:none; }
@@ -174,11 +335,46 @@ h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
 .spinner { width:20px; height:20px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite; margin-right:10px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes fadeOut { from{opacity:1} to{opacity:0} }
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+
 ::-webkit-scrollbar { width:3px; }
 ::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:3px; }
 </style>
 </head>
 <body>
+
+<!-- ── PWA INSTALL POPUP ── -->
+<div class="pwa-backdrop" id="pwaBackdrop" style="display:none">
+  <div class="pwa-sheet" id="pwaSheet">
+    <div class="pwa-handle"></div>
+    <div class="pwa-body" id="pwaBody">
+      <div class="pwa-top">
+        <div class="pwa-icon">🌐</div>
+        <div class="pwa-title-block">
+          <div class="pwa-app-name">Nexus Social</div>
+          <div class="pwa-domain" id="pwaDomain"></div>
+        </div>
+      </div>
+      <div class="pwa-desc">
+        Install Nexus Social for a faster, full-screen experience with offline access, push notifications, and seamless messaging — right from your home screen.
+      </div>
+      <div class="pwa-features">
+        <div class="pwa-feat">⚡ Faster loading</div>
+        <div class="pwa-feat">🔔 Notifications</div>
+        <div class="pwa-feat">📵 Works offline</div>
+        <div class="pwa-feat">📱 Native feel</div>
+      </div>
+      <div class="pwa-actions">
+        <button class="pwa-btn-install" id="pwaInstallBtn">
+          <span>⬇️</span> Add to Home Screen
+        </button>
+        <button class="pwa-btn-later" onclick="dismissPWA()">Maybe later</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- AUTH PAGE -->
 <div id="authPage" class="auth-page">
@@ -232,43 +428,24 @@ h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
       <button class="nav-btn" onclick="navigate('profile')" id="nb-profile">👤</button>
     </div>
     <div class="topbar-right">
-      <!-- NOTIFICATIONS BELL - now functional -->
       <button class="icon-btn" id="notifBtn" onclick="openNotifications()">🔔<span class="badge" id="notifBadge" style="display:none">0</span></button>
       <img id="topAvt" src="https://i.pravatar.cc/34?img=1" class="user-avt" onclick="navigate('profile')">
     </div>
   </div>
 
   <div class="main">
-    <!-- LEFT SIDEBAR -->
     <div class="sidebar" id="lsidebar">
-      <div class="snav active" onclick="navigate('feed')" id="ln-feed">
-        <div class="ic">🏠</div><span>Home</span>
-      </div>
-      <div class="snav" onclick="navigate('friends')" id="ln-friends">
-        <div class="ic">👥</div><span>Friends</span>
-      </div>
-      <div class="snav" onclick="navigate('messages')" id="ln-messages">
-        <div class="ic">💬</div><span>Messages</span>
-      </div>
-      <div class="snav" onclick="navigate('profile')" id="ln-profile">
-        <div class="ic">👤</div><span>Profile</span>
-      </div>
-      <div class="snav" onclick="showToast('Groups coming soon!')">
-        <div class="ic">🧩</div><span>Groups</span>
-      </div>
-      <div class="snav" onclick="window.open('https://shopmitch.com.ng', '_blank')">
-        <div class="ic">🛒</div><span>Marketplace</span>
-      </div>
+      <div class="snav active" onclick="navigate('feed')" id="ln-feed"><div class="ic">🏠</div><span>Home</span></div>
+      <div class="snav" onclick="navigate('friends')" id="ln-friends"><div class="ic">👥</div><span>Friends</span></div>
+      <div class="snav" onclick="navigate('messages')" id="ln-messages"><div class="ic">💬</div><span>Messages</span></div>
+      <div class="snav" onclick="navigate('profile')" id="ln-profile"><div class="ic">👤</div><span>Profile</span></div>
+      <div class="snav" onclick="showToast('Groups coming soon!')"><div class="ic">🧩</div><span>Groups</span></div>
+      <div class="snav" onclick="window.open('https://shopmitch.com.ng', '_blank')"><div class="ic">🛒</div><span>Marketplace</span></div>
       <div class="sec-title">Account</div>
-      <div class="snav" onclick="logout()">
-        <div class="ic">🚪</div><span>Logout</span>
-      </div>
+      <div class="snav" onclick="logout()"><div class="ic">🚪</div><span>Logout</span></div>
     </div>
 
-    <!-- FEED -->
     <div class="feed" id="mainFeed">
-
-      <!-- FEED PAGE -->
       <div class="page active" id="page-feed">
         <div class="composer">
           <div class="composer-top">
@@ -284,19 +461,16 @@ h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
         <div id="postsContainer"><div class="loading"><div class="spinner"></div>Loading feed...</div></div>
       </div>
 
-      <!-- FRIENDS PAGE -->
       <div class="page" id="page-friends">
         <h2 style="margin-bottom:16px;font-size:20px;">People You May Know</h2>
         <div id="suggestionsContainer"><div class="loading"><div class="spinner"></div>Loading...</div></div>
       </div>
 
-      <!-- MESSAGES PAGE -->
       <div class="page" id="page-messages">
         <h2 style="margin-bottom:16px;font-size:20px;">Messages</h2>
         <div id="convoContainer"><div class="loading"><div class="spinner"></div>Loading...</div></div>
       </div>
 
-      <!-- PROFILE PAGE -->
       <div class="page" id="page-profile">
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;margin-bottom:16px;">
           <div style="height:180px;background:linear-gradient(135deg,#1a1a5e,#3a1a6e,#6c1a4e);"></div>
@@ -317,7 +491,6 @@ h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
       </div>
     </div>
 
-    <!-- RIGHT SIDEBAR -->
     <div class="right-bar" id="rsidebar">
       <div class="sec-title">Suggested</div>
       <div id="rightSuggestions"><div style="padding:8px;font-size:12px;color:var(--text3);">Loading...</div></div>
@@ -331,8 +504,189 @@ h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
 <div class="chat-overlay" id="chatOverlay"></div>
 <!-- MODAL -->
 <div id="modalContainer"></div>
+<!-- CALL BANNER -->
+<div id="callBannerContainer"></div>
 
 <script>
+// ═══════════════════════════════════════════════════
+//  PWA INSTALL LOGIC
+// ═══════════════════════════════════════════════════
+let deferredPrompt = null;
+const PWA_DISMISSED_KEY = 'nexus_pwa_dismissed';
+const PWA_INSTALLED_KEY = 'nexus_pwa_installed';
+
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+function isInStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+function isAndroid() {
+  return /android/i.test(navigator.userAgent);
+}
+
+function initPWA() {
+  // Don't show if already installed or dismissed recently
+  if (isInStandaloneMode()) return;
+  if (localStorage.getItem(PWA_INSTALLED_KEY)) return;
+
+  const dismissed = localStorage.getItem(PWA_DISMISSED_KEY);
+  if (dismissed) {
+    const daysSince = (Date.now() - parseInt(dismissed)) / (1000 * 60 * 60 * 24);
+    if (daysSince < 3) return; // Wait 3 days before showing again
+  }
+
+  document.getElementById('pwaDomain').textContent = window.location.hostname || 'nexus.social';
+
+  // Android/Chrome: use beforeinstallprompt
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    setTimeout(() => showPWAPopup('android'), 2500);
+  });
+
+  // iOS: show manual instructions
+  if (isIOS() && !isInStandaloneMode()) {
+    setTimeout(() => showPWAPopup('ios'), 2500);
+  }
+
+  // Desktop Chrome / other browsers fallback
+  window.addEventListener('appinstalled', () => {
+    localStorage.setItem(PWA_INSTALLED_KEY, '1');
+    hidePWAPopup();
+    showToast('✅ Nexus installed successfully!');
+  });
+
+  // If no beforeinstallprompt fires (e.g. already installed or not eligible),
+  // we can show a manual guide for other browsers after a delay
+  setTimeout(() => {
+    if (!deferredPrompt && !isIOS() && !isInStandaloneMode() && !localStorage.getItem(PWA_DISMISSED_KEY)) {
+      // Only show if we haven't shown the iOS one
+      if (!document.getElementById('pwaBackdrop').style.display || document.getElementById('pwaBackdrop').style.display === 'none') {
+        showPWAPopup('manual');
+      }
+    }
+  }, 5000);
+}
+
+function showPWAPopup(type) {
+  const backdrop = document.getElementById('pwaBackdrop');
+  const body = document.getElementById('pwaBody');
+  const installBtn = document.getElementById('pwaInstallBtn');
+
+  if (type === 'ios') {
+    body.innerHTML = `
+      <div class="ios-sheet">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <div class="pwa-icon">🌐</div>
+          <div>
+            <div class="pwa-app-name" style="font-family:'Cabinet Grotesk',sans-serif;font-weight:900;font-size:20px;background:linear-gradient(135deg,#a78bfa,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Add to Home Screen</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px;">Install Nexus Social on your iPhone</div>
+          </div>
+        </div>
+        <div class="ios-steps">
+          <div class="ios-step">
+            <div class="ios-step-num">1</div>
+            <div class="ios-step-txt">Tap the <strong>Share button</strong> <span style="font-size:16px;">⬆️</span> at the bottom of your Safari browser</div>
+          </div>
+          <div class="ios-step">
+            <div class="ios-step-num">2</div>
+            <div class="ios-step-txt">Scroll down and tap <strong>"Add to Home Screen"</strong></div>
+          </div>
+          <div class="ios-step">
+            <div class="ios-step-num">3</div>
+            <div class="ios-step-txt">Tap <strong>"Add"</strong> in the top-right corner to install</div>
+          </div>
+        </div>
+        <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px;">
+          <button class="pwa-btn-later" onclick="dismissPWA()">Got it, maybe later</button>
+        </div>
+      </div>`;
+  } else if (type === 'android') {
+    installBtn.onclick = async () => {
+      if (!deferredPrompt) { dismissPWA(); return; }
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      if (outcome === 'accepted') {
+        localStorage.setItem(PWA_INSTALLED_KEY, '1');
+        hidePWAPopup();
+        showToast('✅ Installing Nexus...');
+      } else {
+        dismissPWA();
+      }
+    };
+  } else if (type === 'manual') {
+    installBtn.onclick = () => {
+      showToast('Use your browser menu → "Install app" or "Add to Home Screen"');
+      dismissPWA();
+    };
+    installBtn.innerHTML = '<span>📱</span> How to Install';
+  }
+
+  backdrop.style.display = 'flex';
+}
+
+function hidePWAPopup() {
+  const backdrop = document.getElementById('pwaBackdrop');
+  backdrop.classList.add('hiding');
+  setTimeout(() => { backdrop.style.display = 'none'; backdrop.classList.remove('hiding'); }, 300);
+}
+
+function dismissPWA() {
+  localStorage.setItem(PWA_DISMISSED_KEY, Date.now().toString());
+  hidePWAPopup();
+}
+
+// Register service worker for PWA
+function registerSW() {
+  if ('serviceWorker' in navigator) {
+    const swCode = `
+      const CACHE = 'nexus-v1';
+      const OFFLINE = ['/'];
+      self.addEventListener('install', e => {
+        e.waitUntil(caches.open(CACHE).then(c => c.addAll(OFFLINE)));
+        self.skipWaiting();
+      });
+      self.addEventListener('activate', e => {
+        e.waitUntil(clients.claim());
+      });
+      self.addEventListener('fetch', e => {
+        if (e.request.mode === 'navigate') {
+          e.respondWith(fetch(e.request).catch(() => caches.match('/')));
+        }
+      });
+    `;
+    const blob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(swUrl).catch(() => {});
+  }
+}
+
+// Inline manifest
+function setupManifest() {
+  const manifest = {
+    name: 'Nexus Social',
+    short_name: 'Nexus',
+    description: 'Connect with the world',
+    start_url: '/',
+    display: 'standalone',
+    background_color: '#0a0a0f',
+    theme_color: '#6c63ff',
+    orientation: 'portrait',
+    icons: [
+      { src: 'https://ui-avatars.com/api/?name=N&background=6c63ff&color=fff&size=192&bold=true&rounded=false', sizes: '192x192', type: 'image/png' },
+      { src: 'https://ui-avatars.com/api/?name=N&background=6c63ff&color=fff&size=512&bold=true&rounded=false', sizes: '512x512', type: 'image/png' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+  document.getElementById('manifest-placeholder').setAttribute('href', URL.createObjectURL(blob));
+}
+
+// ═══════════════════════════════════════════════════
+//  APP STATE
+// ═══════════════════════════════════════════════════
 const API = '';
 let token = localStorage.getItem('token');
 let currentUser = null;
@@ -341,7 +695,30 @@ let chatWindows = {};
 let callTimer = null;
 let callSecs = 0;
 
-// ── AUTH ──
+// WebRTC state
+let rtcPeerConnections = {};  // keyed by userId
+let localStream = null;
+let currentCallData = null;  // { userId, name, type, avatar }
+let isCallActive = false;
+let isMuted = false;
+let isCamOff = false;
+let isSpeakerOn = true;
+
+// Typing indicators
+let typingTimers = {};
+
+// ICE servers (STUN)
+const ICE_SERVERS = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' }
+  ]
+};
+
+// ═══════════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════════
 async function login() {
   const email = document.getElementById('loginEmail').value;
   const password = document.getElementById('loginPassword').value;
@@ -396,6 +773,7 @@ function showLogin() {
 }
 
 function logout() {
+  stopLocalStream();
   localStorage.removeItem('token');
   token = null; currentUser = null;
   document.getElementById('appPage').style.display = 'none';
@@ -403,7 +781,9 @@ function logout() {
   showToast('Logged out!');
 }
 
-// ── INIT ──
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
 async function initApp() {
   document.getElementById('authPage').style.display = 'none';
   document.getElementById('appPage').style.display = 'flex';
@@ -423,7 +803,6 @@ async function initApp() {
   loadFeed();
   loadSuggestions();
   loadUnreadCount();
-  // Poll for new notifications every 30 seconds
   setInterval(loadUnreadCount, 30000);
 }
 
@@ -431,32 +810,227 @@ function authHeader() {
   return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 }
 
-// ── SOCKET ──
+// ═══════════════════════════════════════════════════
+//  SOCKET & WEBRTC SIGNALING
+// ═══════════════════════════════════════════════════
 function initSocket() {
-  socket = io();
+  try {
+    socket = io();
+  } catch(e) {
+    // Mock socket for environments without socket.io
+    socket = {
+      emit: () => {},
+      on: () => {}
+    };
+  }
+
   socket.emit('join', currentUser.id);
+
+  // ── Messages ──
   socket.on('receiveMessage', (data) => {
-    if (chatWindows[data.senderName]) {
-      chatWindows[data.senderName].push({sent:false, text:data.text, time:now()});
+    const winKey = data.senderId || data.senderName;
+    if (chatWindows[winKey]) {
+      chatWindows[winKey].msgs.push({sent:false, text:data.text, time:now()});
       renderChats();
     } else {
       showToast(`💬 ${data.senderName}: ${data.text}`);
+      // Auto-open chat
+      chatWindows[winKey] = {
+        userId: data.senderId,
+        name: data.senderName,
+        avatar: data.senderAvatar || '',
+        msgs: [{ sent:false, text:data.text, time:now() }]
+      };
+      renderChats();
     }
   });
-  socket.on('incomingCall', (data) => {
-    showIncomingCall(data);
+
+  socket.on('userTyping', (data) => {
+    if (chatWindows[data.senderId]) {
+      const el = document.getElementById(`typing-${data.senderId}`);
+      if (el) el.textContent = `${data.senderName} is typing...`;
+      clearTimeout(typingTimers[data.senderId]);
+      typingTimers[data.senderId] = setTimeout(() => {
+        const el2 = document.getElementById(`typing-${data.senderId}`);
+        if (el2) el2.textContent = '';
+      }, 3000);
+    }
   });
+
+  // ── Incoming call ──
+  socket.on('incomingCall', async (data) => {
+    showIncomingCallBanner(data);
+  });
+
+  // ── WebRTC Signaling ──
+  socket.on('webrtc-offer', async (data) => {
+    if (!isCallActive) return;
+    const pc = getOrCreatePC(data.from);
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      socket.emit('webrtc-answer', {
+        to: data.from,
+        answer: pc.localDescription
+      });
+    } catch(e) { console.warn('WebRTC offer error:', e); }
+  });
+
+  socket.on('webrtc-answer', async (data) => {
+    const pc = rtcPeerConnections[data.from];
+    if (!pc) return;
+    try {
+      await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+    } catch(e) { console.warn('WebRTC answer error:', e); }
+  });
+
+  socket.on('webrtc-ice-candidate', async (data) => {
+    const pc = rtcPeerConnections[data.from];
+    if (!pc) return;
+    try {
+      await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+    } catch(e) { console.warn('ICE error:', e); }
+  });
+
+  socket.on('callAccepted', async (data) => {
+    updateCallStatus('Connected');
+    startTimer();
+    // Initiate WebRTC offer
+    if (currentCallData) {
+      await initiateWebRTCOffer(currentCallData.userId);
+    }
+  });
+
+  socket.on('callDeclined', () => {
+    cleanupCall();
+    closeModal();
+    showToast('Call declined');
+  });
+
   socket.on('callEnded', () => {
+    cleanupCall();
     closeModal();
     showToast('Call ended');
   });
-  // Real-time notification via socket
+
   socket.on('newNotification', () => {
     loadUnreadCount();
   });
 }
 
-// ── FEED ──
+// ── WebRTC Peer Connection Management ──
+function getOrCreatePC(userId) {
+  if (rtcPeerConnections[userId]) return rtcPeerConnections[userId];
+
+  const pc = new RTCPeerConnection(ICE_SERVERS);
+  rtcPeerConnections[userId] = pc;
+
+  // Add local stream tracks
+  if (localStream) {
+    localStream.getTracks().forEach(track => {
+      pc.addTrack(track, localStream);
+    });
+  }
+
+  // ICE candidates
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit('webrtc-ice-candidate', {
+        to: userId,
+        candidate: event.candidate
+      });
+    }
+  };
+
+  // Remote stream
+  pc.ontrack = (event) => {
+    const remoteVideo = document.getElementById('remoteVideo');
+    const remoteAudio = document.getElementById('remoteAudio');
+    if (event.streams && event.streams[0]) {
+      if (remoteVideo && event.streams[0].getVideoTracks().length > 0) {
+        remoteVideo.srcObject = event.streams[0];
+        document.getElementById('remotePlaceholder').style.display = 'none';
+        remoteVideo.style.display = 'block';
+      }
+      if (remoteAudio) {
+        remoteAudio.srcObject = event.streams[0];
+      }
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    const state = pc.connectionState;
+    if (state === 'connected') {
+      updateCallStatus('Connected ●');
+    } else if (state === 'disconnected' || state === 'failed') {
+      cleanupCall();
+      closeModal();
+      showToast('Call disconnected');
+    }
+  };
+
+  return pc;
+}
+
+async function initiateWebRTCOffer(userId) {
+  const pc = getOrCreatePC(userId);
+  try {
+    const offer = await pc.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: currentCallData?.type === 'video'
+    });
+    await pc.setLocalDescription(offer);
+    socket.emit('webrtc-offer', {
+      to: userId,
+      offer: pc.localDescription
+    });
+  } catch(e) { console.warn('Offer error:', e); }
+}
+
+async function getLocalStream(type) {
+  try {
+    const constraints = {
+      audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 },
+      video: type === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false
+    };
+    localStream = await navigator.mediaDevices.getUserMedia(constraints);
+    return localStream;
+  } catch(e) {
+    // Permission denied or no device
+    console.warn('Media access error:', e);
+    showToast('⚠️ Could not access camera/mic');
+    return null;
+  }
+}
+
+function stopLocalStream() {
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+}
+
+function closePeerConnections() {
+  Object.values(rtcPeerConnections).forEach(pc => pc.close());
+  rtcPeerConnections = {};
+}
+
+function cleanupCall() {
+  clearInterval(callTimer);
+  callTimer = null;
+  callSecs = 0;
+  isCallActive = false;
+  currentCallData = null;
+  isMuted = false;
+  isCamOff = false;
+  stopLocalStream();
+  closePeerConnections();
+}
+
+// ═══════════════════════════════════════════════════
+//  FEED
+// ═══════════════════════════════════════════════════
 async function loadFeed() {
   const res = await fetch(`${API}/api/posts`, { headers: authHeader() });
   const posts = await res.json();
@@ -486,9 +1060,7 @@ function renderPosts(posts, containerId) {
         <span>💬 ${p.comment_count||0} comments</span>
       </div>
       <div class="post-acts">
-        <button class="pa ${p.liked?'liked':''}" onclick="toggleLike('${p.id}',this)">
-          ${p.liked?'❤️':'🤍'} Like
-        </button>
+        <button class="pa ${p.liked?'liked':''}" onclick="toggleLike('${p.id}',this)">${p.liked?'❤️':'🤍'} Like</button>
         <button class="pa" onclick="toggleComments('${p.id}')">💬 Comment</button>
         <button class="pa" onclick="showToast('Link copied!')">↗️ Share</button>
       </div>
@@ -560,7 +1132,9 @@ async function deletePost(postId) {
   showToast('Post deleted');
 }
 
-// ── SUGGESTIONS ──
+// ═══════════════════════════════════════════════════
+//  SUGGESTIONS
+// ═══════════════════════════════════════════════════
 async function loadSuggestions() {
   try {
     const res = await fetch(`${API}/api/users/suggestions/all`, { headers: authHeader() });
@@ -588,7 +1162,7 @@ async function loadSuggestions() {
       `).join('')}</div>` : '<div class="loading">No suggestions right now</div>';
 
     document.getElementById('onlineFriends').innerHTML = users.slice(0,4).map(u=>`
-      <div class="friend-row" onclick="openChat('${u.name}','${u.id}','${u.avatar||''}')">
+      <div class="friend-row" onclick="openChat(${JSON.stringify(u.name)}, '${u.id}', '${u.avatar||''}')">
         <div class="favt">
           <img src="${u.avatar||`https://i.pravatar.cc/34?u=${u.id}`}">
           <div class="dot"></div>
@@ -607,13 +1181,17 @@ async function addFriend(userId, btn) {
   showToast('Friend request sent!');
 }
 
-// ── MESSAGES ──
+// ═══════════════════════════════════════════════════
+//  MESSAGES
+// ═══════════════════════════════════════════════════
 async function loadConversations() {
   const res = await fetch(`${API}/api/messages/conversations`, { headers: authHeader() });
   const convos = await res.json();
   const el = document.getElementById('convoContainer');
   el.innerHTML = convos.length ? convos.map(c=>`
-    <div onclick="openChat('${c.name}','${c.id}','${c.avatar||''}')" style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;cursor:pointer;margin-bottom:8px;transition:.15s;" onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
+    <div onclick="openChat(${JSON.stringify(c.name)}, '${c.id}', '${c.avatar||''}')"
+         style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;cursor:pointer;margin-bottom:8px;transition:.15s;"
+         onmouseover="this.style.borderColor='var(--border2)'" onmouseout="this.style.borderColor='var(--border)'">
       <img src="${c.avatar||`https://i.pravatar.cc/44?u=${c.id}`}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;">
       <div style="flex:1;">
         <div style="font-weight:700;font-size:13px;">${c.name}</div>
@@ -624,151 +1202,321 @@ async function loadConversations() {
   `).join('') : '<div class="loading">No conversations yet. Start chatting!</div>';
 }
 
-// ── CHAT ──
+// ═══════════════════════════════════════════════════
+//  CHAT WINDOWS
+// ═══════════════════════════════════════════════════
 async function openChat(name, userId, avatar) {
-  if (chatWindows[name]) return;
-  chatWindows[name] = { userId, avatar, msgs:[] };
-  const res = await fetch(`${API}/api/messages/${userId}`, { headers: authHeader() });
-  const msgs = await res.json();
-  chatWindows[name].msgs = msgs.map(m=>({
-    sent: m.sender_id === currentUser.id,
-    text: m.text,
-    time: formatTime(m.created_at)
-  }));
+  const key = userId;
+  if (chatWindows[key]) {
+    // Just focus the existing window
+    renderChats();
+    return;
+  }
+  chatWindows[key] = { userId, name, avatar, msgs:[], isLoading: true };
+  renderChats();
+
+  try {
+    const res = await fetch(`${API}/api/messages/${userId}`, { headers: authHeader() });
+    const msgs = await res.json();
+    chatWindows[key].msgs = msgs.map(m=>({
+      sent: m.sender_id === currentUser.id,
+      text: m.text,
+      time: formatTime(m.created_at)
+    }));
+  } catch(e) {}
+  chatWindows[key].isLoading = false;
   renderChats();
 }
 
 function renderChats() {
-  document.getElementById('chatOverlay').innerHTML = Object.entries(chatWindows).map(([name,data])=>`
+  document.getElementById('chatOverlay').innerHTML = Object.entries(chatWindows).map(([key, data])=>`
     <div class="chat-win">
       <div class="chat-hdr">
         <img src="${data.avatar||`https://i.pravatar.cc/34?u=${data.userId}`}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
         <div class="chat-hdr-info">
-          <div class="chat-hdr-name">${name}</div>
-          <div class="chat-hdr-status">● Active</div>
+          <div class="chat-hdr-name">${data.name}</div>
+          <div class="chat-hdr-status">● Active now</div>
         </div>
         <div class="call-btns">
-          <button class="cbtn" onclick="startCall('${name}','${data.userId}','audio')" title="Voice call">📞</button>
-          <button class="cbtn" onclick="startCall('${name}','${data.userId}','video')" title="Video call">📹</button>
-          <button class="cbtn" onclick="closeChat('${name}')">✕</button>
+          <button class="cbtn" onclick="startCall(${JSON.stringify(data.name)}, '${data.userId}', '${data.avatar||''}', 'audio')" title="Voice call">📞</button>
+          <button class="cbtn" onclick="startCall(${JSON.stringify(data.name)}, '${data.userId}', '${data.avatar||''}', 'video')" title="Video call">📹</button>
+          <button class="cbtn" onclick="closeChat('${key}')">✕</button>
         </div>
       </div>
-      <div class="chat-msgs" id="msgs-${name.replace(/\s/g,'_')}">
+      <div class="chat-msgs" id="msgs-${key}">
+        ${data.isLoading ? '<div class="loading" style="padding:20px"><div class="spinner"></div></div>' : ''}
         ${data.msgs.map(m=>`
           <div class="msg ${m.sent?'sent':'recv'}">
-            <div class="msg-bbl">${m.text}</div>
+            <div class="msg-bbl">${escapeHtml(m.text)}</div>
             <div class="msg-t">${m.time}</div>
           </div>
         `).join('')}
       </div>
+      <div class="chat-typing" id="typing-${data.userId}"></div>
       <div class="chat-inp-row">
-        <input class="chat-inp" placeholder="Aa" onkeydown="if(event.key==='Enter')sendMsg('${name}','${data.userId}',this)">
-        <button class="send-btn" onclick="sendMsg('${name}','${data.userId}',this.previousElementSibling)">➤</button>
+        <input class="chat-inp" id="chatinp-${key}" placeholder="Aa"
+          oninput="emitTyping('${data.userId}')"
+          onkeydown="if(event.key==='Enter')sendMsg('${key}','${data.userId}',this)">
+        <button class="send-btn" onclick="sendMsg('${key}','${data.userId}',document.getElementById('chatinp-${key}'))">➤</button>
       </div>
     </div>
   `).join('');
-  Object.keys(chatWindows).forEach(name=>{
-    const el = document.getElementById('msgs-'+name.replace(/\s/g,'_'));
-    if(el) el.scrollTop = el.scrollHeight;
+
+  // Scroll all to bottom
+  Object.keys(chatWindows).forEach(key => {
+    const el = document.getElementById('msgs-' + key);
+    if (el) el.scrollTop = el.scrollHeight;
   });
 }
 
-async function sendMsg(name, userId, input) {
+let typingEmitTimer = null;
+function emitTyping(userId) {
+  clearTimeout(typingEmitTimer);
+  typingEmitTimer = setTimeout(() => {
+    socket.emit('typing', {
+      receiverId: userId,
+      senderId: currentUser.id,
+      senderName: currentUser.name
+    });
+  }, 400);
+}
+
+async function sendMsg(key, userId, input) {
   if (!input.value.trim()) return;
   const text = input.value.trim();
   input.value = '';
-  const res = await fetch(`${API}/api/messages/${userId}`, {
-    method:'POST', headers: authHeader(),
-    body: JSON.stringify({text})
-  });
-  if (res.ok) {
-    chatWindows[name].msgs.push({sent:true, text, time:now()});
-    renderChats();
-    socket.emit('sendMessage', {
-      receiverId: userId,
-      senderName: currentUser.name,
-      text
+
+  chatWindows[key].msgs.push({sent:true, text, time:now()});
+  renderChats();
+
+  try {
+    await fetch(`${API}/api/messages/${userId}`, {
+      method:'POST', headers: authHeader(),
+      body: JSON.stringify({text})
     });
-  }
+  } catch(e) {}
+
+  socket.emit('sendMessage', {
+    receiverId: userId,
+    senderId: currentUser.id,
+    senderName: currentUser.name,
+    senderAvatar: currentUser.avatar || '',
+    text
+  });
 }
 
-function closeChat(name) {
-  delete chatWindows[name];
+function closeChat(key) {
+  delete chatWindows[key];
   renderChats();
 }
 
-// ── CALLS ──
-function startCall(name, userId, type) {
-  callSecs = 0;
+function escapeHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ═══════════════════════════════════════════════════
+//  CALLS — Full WebRTC
+// ═══════════════════════════════════════════════════
+async function startCall(name, userId, avatar, type) {
+  if (isCallActive) { showToast('Already in a call'); return; }
+  isCallActive = true;
+  isMuted = false;
+  isCamOff = false;
+  currentCallData = { userId, name, avatar, type };
+
+  // Acquire media first
+  const stream = await getLocalStream(type);
+  // Render call UI immediately (even without media)
+  renderOutgoingCallUI(name, userId, avatar, type, stream);
+
+  // Notify the other person
+  socket.emit('callUser', {
+    receiverId: userId,
+    callerId: currentUser.id,
+    callerName: currentUser.name,
+    callerAvatar: currentUser.avatar || '',
+    type
+  });
+}
+
+function renderOutgoingCallUI(name, userId, avatar, type, stream) {
   const isVideo = type === 'video';
-  socket.emit('callUser', { receiverId: userId, callerName: currentUser.name, type });
+
   document.getElementById('modalContainer').innerHTML = `
-    <div class="modal-ov" onclick="">
+    <div class="modal-ov">
       <div class="call-box">
-        <div class="call-vid">${isVideo?'🧑‍💻':'📞'}<div class="call-self-vid">${isVideo?'😊':'🎙️'}</div></div>
+        ${isVideo ? `
+          <div class="call-video-area">
+            <video id="remoteVideo" class="call-remote-video" autoplay playsinline style="display:none"></video>
+            <audio id="remoteAudio" autoplay style="display:none"></audio>
+            <div class="call-remote-placeholder" id="remotePlaceholder">${avatar ? `<img src="${avatar}" style="width:96px;height:96px;border-radius:50%;object-fit:cover;">` : '🧑'}<span style="font-size:14px;color:var(--text3);">Calling...</span></div>
+            <div class="call-self-video-wrap">
+              <video id="localVideo" class="call-self-video" autoplay playsinline muted></video>
+              <div class="call-self-placeholder" id="localPlaceholder" style="${stream?'display:none':''}">😊</div>
+            </div>
+          </div>
+        ` : `
+          <div class="call-audio-area">
+            <audio id="remoteAudio" autoplay style="display:none"></audio>
+            <div class="call-audio-avatar">
+              ${avatar ? `<img src="${avatar}" style="width:96px;height:96px;border-radius:50%;object-fit:cover;">` : '📞'}
+              <div class="call-audio-pulse"></div>
+              <div class="call-audio-pulse2"></div>
+            </div>
+          </div>
+        `}
         <div class="call-info">
           <div class="call-name">${name}</div>
-          <div class="call-stat">${isVideo?'Video':'Voice'} Call</div>
-          <div class="call-timer" id="callTimer">Calling...</div>
+          <div class="call-stat" id="callStatus">${isVideo?'📹 Video':'📞 Voice'} call • Calling...</div>
+          <div class="call-timer" id="callTimer" style="display:none">00:00</div>
         </div>
         <div class="call-ctrls">
-          <button class="cc tog on" onclick="toggleCC(this,'🎙️','🔇')">🎙️</button>
-          ${isVideo?`<button class="cc tog on" onclick="toggleCC(this,'📹','🚫')">📹</button>`:''}
-          <button class="cc tog" onclick="toggleCC(this,'🔊','🔕')">🔊</button>
+          <button class="cc tog" id="muteBtn" onclick="toggleMute()">🎙️</button>
+          ${isVideo ? `<button class="cc tog" id="camBtn" onclick="toggleCamera()">📹</button>` : ''}
+          <button class="cc tog" id="speakerBtn" onclick="toggleSpeaker()">🔊</button>
           <button class="cc end" onclick="endCall('${userId}')">📵</button>
         </div>
       </div>
     </div>`;
-  setTimeout(()=>{
-    const el = document.getElementById('callTimer');
-    if(el){ el.textContent='00:00'; startTimer(); }
-  }, 1500);
+
+  // Attach local video stream
+  if (stream && isVideo) {
+    const lv = document.getElementById('localVideo');
+    if (lv) {
+      lv.srcObject = stream;
+      document.getElementById('localPlaceholder').style.display = 'none';
+    }
+  }
 }
 
-function showIncomingCall(data) {
-  document.getElementById('modalContainer').innerHTML = `
-    <div class="modal-ov">
-      <div class="call-box">
-        <div class="call-vid" style="font-size:64px;">📞</div>
-        <div class="call-info">
-          <div class="call-name">${data.callerName}</div>
-          <div class="call-stat">Incoming ${data.type} call...</div>
-        </div>
-        <div class="call-ctrls">
-          <button class="cc tog on" style="background:#43e97b;" onclick="showToast('Call answered!');closeModal()">📞</button>
-          <button class="cc end" onclick="closeModal();showToast('Call declined')">📵</button>
-        </div>
+function showIncomingCallBanner(data) {
+  const container = document.getElementById('callBannerContainer');
+  container.innerHTML = `
+    <div class="call-banner" id="callBanner">
+      <img src="${data.callerAvatar || `https://i.pravatar.cc/44?u=${data.callerId}`}" class="call-banner-avt">
+      <div class="call-banner-info">
+        <div class="call-banner-name">${data.callerName}</div>
+        <div class="call-banner-type">${data.type === 'video' ? '📹 Video' : '📞 Voice'} call incoming...</div>
+      </div>
+      <div class="call-banner-btns">
+        <button class="cbb accept" onclick="acceptCall(${JSON.stringify(data)})">Accept</button>
+        <button class="cbb decline" onclick="declineCall('${data.callerId}')">Decline</button>
       </div>
     </div>`;
+
+  // Auto-dismiss banner after 30s
+  setTimeout(() => {
+    const banner = document.getElementById('callBanner');
+    if (banner) banner.remove();
+  }, 30000);
+}
+
+async function acceptCall(data) {
+  document.getElementById('callBannerContainer').innerHTML = '';
+
+  if (isCallActive) {
+    // Already in a call, decline this one
+    socket.emit('declineCall', { callerId: data.callerId });
+    return;
+  }
+
+  isCallActive = true;
+  isMuted = false;
+  isCamOff = false;
+  currentCallData = { userId: data.callerId, name: data.callerName, avatar: data.callerAvatar, type: data.type };
+
+  const stream = await getLocalStream(data.type);
+  renderOutgoingCallUI(data.callerName, data.callerId, data.callerAvatar, data.type, stream);
+
+  socket.emit('acceptCall', {
+    callerId: data.callerId,
+    receiverName: currentUser.name
+  });
+
+  // The caller will send an offer via webrtc-offer after getting callAccepted
+  updateCallStatus('Connected');
+  startTimer();
+}
+
+function declineCall(callerId) {
+  document.getElementById('callBannerContainer').innerHTML = '';
+  socket.emit('declineCall', { callerId });
+  showToast('Call declined');
+}
+
+function updateCallStatus(msg) {
+  const el = document.getElementById('callStatus');
+  if (el) el.textContent = msg;
 }
 
 function startTimer() {
-  callTimer = setInterval(()=>{
+  const timerEl = document.getElementById('callTimer');
+  if (timerEl) timerEl.style.display = 'block';
+  callSecs = 0;
+  callTimer = setInterval(() => {
     callSecs++;
     const el = document.getElementById('callTimer');
-    if(!el){ clearInterval(callTimer); return; }
+    if (!el) { clearInterval(callTimer); return; }
     el.textContent = `${String(Math.floor(callSecs/60)).padStart(2,'0')}:${String(callSecs%60).padStart(2,'0')}`;
-  },1000);
+  }, 1000);
 }
 
 function endCall(userId) {
-  clearInterval(callTimer);
-  socket.emit('endCall', { receiverId: userId });
+  socket.emit('endCall', { receiverId: userId || currentCallData?.userId });
+  cleanupCall();
   closeModal();
   showToast('Call ended');
 }
 
-function toggleCC(btn, on, off) {
-  btn.classList.toggle('on');
-  btn.textContent = btn.classList.contains('on') ? on : off;
+function toggleMute() {
+  isMuted = !isMuted;
+  if (localStream) {
+    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+  }
+  const btn = document.getElementById('muteBtn');
+  if (btn) {
+    btn.textContent = isMuted ? '🔇' : '🎙️';
+    btn.classList.toggle('muted', isMuted);
+    btn.classList.toggle('on', !isMuted);
+  }
+  showToast(isMuted ? '🔇 Muted' : '🎙️ Unmuted');
 }
 
-function closeModal() {
-  document.getElementById('modalContainer').innerHTML = '';
-  clearInterval(callTimer);
+function toggleCamera() {
+  isCamOff = !isCamOff;
+  if (localStream) {
+    localStream.getVideoTracks().forEach(t => t.enabled = !isCamOff);
+  }
+  const btn = document.getElementById('camBtn');
+  if (btn) {
+    btn.textContent = isCamOff ? '🚫' : '📹';
+    btn.classList.toggle('muted', isCamOff);
+    btn.classList.toggle('on', !isCamOff);
+  }
+  const lv = document.getElementById('localVideo');
+  const lp = document.getElementById('localPlaceholder');
+  if (lv && lp) {
+    lv.style.display = isCamOff ? 'none' : 'block';
+    lp.style.display = isCamOff ? 'flex' : 'none';
+  }
+  showToast(isCamOff ? '📵 Camera off' : '📹 Camera on');
 }
 
-// ── PROFILE ──
+function toggleSpeaker() {
+  isSpeakerOn = !isSpeakerOn;
+  const audio = document.getElementById('remoteAudio');
+  if (audio) audio.muted = !isSpeakerOn;
+  const btn = document.getElementById('speakerBtn');
+  if (btn) {
+    btn.textContent = isSpeakerOn ? '🔊' : '🔕';
+    btn.classList.toggle('on', isSpeakerOn);
+  }
+  showToast(isSpeakerOn ? '🔊 Speaker on' : '🔕 Speaker off');
+}
+
+// ═══════════════════════════════════════════════════
+//  PROFILE
+// ═══════════════════════════════════════════════════
 function showEditProfile() {
   document.getElementById('modalContainer').innerHTML = `
     <div class="modal-ov" onclick="if(event.target===this)closeModal()">
@@ -806,7 +1554,9 @@ async function saveProfile() {
   showToast('Profile updated! ✅');
 }
 
-// ── NOTIFICATIONS ──
+// ═══════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════════════════
 async function loadUnreadCount() {
   try {
     const res = await fetch(`${API}/api/users/notifications/unread`, { headers: authHeader() });
@@ -824,7 +1574,6 @@ async function loadUnreadCount() {
 async function openNotifications() {
   await fetch(`${API}/api/users/notifications/read`, { method:'PUT', headers: authHeader() });
   document.getElementById('notifBadge').style.display = 'none';
-
   const res = await fetch(`${API}/api/users/notifications/all`, { headers: authHeader() });
   const notifs = await res.json();
 
@@ -854,7 +1603,9 @@ async function openNotifications() {
     </div>`;
 }
 
-// ── NAVIGATE ──
+// ═══════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════
 function navigate(page) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+page).classList.add('active');
@@ -884,7 +1635,13 @@ async function searchUsers(query) {
   if (users.length) showToast(`Found ${users.length} user(s) for "${query}"`);
 }
 
-// ── UTILS ──
+// ═══════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════
+function closeModal() {
+  document.getElementById('modalContainer').innerHTML = '';
+}
+
 function formatTime(ts) {
   if (!ts) return '';
   const d = new Date(ts);
@@ -907,7 +1664,17 @@ function showToast(msg) {
   setTimeout(()=>t.remove(), 2500);
 }
 
-// ── AUTO LOGIN ──
+// ═══════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════
+setupManifest();
+registerSW();
+
+// Show PWA popup when page loads (not immediately — slight delay)
+window.addEventListener('load', () => {
+  initPWA();
+});
+
 if (token) { initApp(); }
 </script>
 </body>
