@@ -71,6 +71,14 @@ router.post('/:id/friend', auth, async (req, res) => {
       'INSERT INTO friends (id, user_id, friend_id) VALUES ($1, $2, $3)',
       [uuidv4(), req.user.id, req.params.id]
     );
+
+    // Notify the user who received the friend request
+    const sender = await db.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+    await db.query(
+      'INSERT INTO notifications (id, user_id, from_user_id, type, message) VALUES ($1,$2,$3,$4,$5)',
+      [uuidv4(), req.params.id, req.user.id, 'friend_request', `${sender.rows[0].name} sent you a friend request`]
+    );
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -84,14 +92,16 @@ router.put('/:id/friend/accept', auth, async (req, res) => {
       'UPDATE friends SET status=$1 WHERE user_id=$2 AND friend_id=$3',
       ['accepted', req.params.id, req.user.id]
     );
+    await db.query('UPDATE users SET followers=followers+1 WHERE id=$1', [req.user.id]);
+    await db.query('UPDATE users SET following=following+1 WHERE id=$1', [req.params.id]);
+
+    // Notify sender that request was accepted
+    const accepter = await db.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     await db.query(
-      'UPDATE users SET followers=followers+1 WHERE id=$1',
-      [req.user.id]
+      'INSERT INTO notifications (id, user_id, from_user_id, type, message) VALUES ($1,$2,$3,$4,$5)',
+      [uuidv4(), req.params.id, req.user.id, 'friend_accept', `${accepter.rows[0].name} accepted your friend request`]
     );
-    await db.query(
-      'UPDATE users SET following=following+1 WHERE id=$1',
-      [req.params.id]
-    );
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -133,6 +143,49 @@ router.get('/suggestions/all', auth, async (req, res) => {
       LIMIT 10
     `, [req.user.id, req.user.id, req.user.id]);
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get notifications
+router.get('/notifications/all', auth, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT n.*, u.name as from_name, u.avatar as from_avatar
+      FROM notifications n
+      JOIN users u ON n.from_user_id = u.id
+      WHERE n.user_id = $1
+      ORDER BY n.created_at DESC
+      LIMIT 30
+    `, [req.user.id]);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Mark notifications as read
+router.put('/notifications/read', auth, async (req, res) => {
+  try {
+    await db.query(
+      'UPDATE notifications SET read_status=true WHERE user_id=$1',
+      [req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get unread notification count
+router.get('/notifications/unread', auth, async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT COUNT(*) FROM notifications WHERE user_id=$1 AND read_status=false',
+      [req.user.id]
+    );
+    res.json({ count: parseInt(result.rows[0].count) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
