@@ -91,6 +91,17 @@ router.post('/:id/like', auth, async (req, res) => {
         'INSERT INTO likes (id, post_id, user_id) VALUES ($1, $2, $3)',
         [uuidv4(), req.params.id, req.user.id]
       );
+
+      // Create notification for post owner
+      const post = await db.query('SELECT user_id FROM posts WHERE id=$1', [req.params.id]);
+      if (post.rows.length > 0 && post.rows[0].user_id !== req.user.id) {
+        const liker = await db.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+        await db.query(
+          'INSERT INTO notifications (id, user_id, from_user_id, type, message) VALUES ($1,$2,$3,$4,$5)',
+          [uuidv4(), post.rows[0].user_id, req.user.id, 'like', `${liker.rows[0].name} liked your post`]
+        );
+      }
+
       res.json({ liked: true });
     }
   } catch (err) {
@@ -127,6 +138,16 @@ router.post('/:id/comments', auth, async (req, res) => {
       [id, req.params.id, req.user.id, text]
     );
 
+    // Create notification for post owner
+    const post = await db.query('SELECT user_id FROM posts WHERE id=$1', [req.params.id]);
+    if (post.rows.length > 0 && post.rows[0].user_id !== req.user.id) {
+      const commenter = await db.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
+      await db.query(
+        'INSERT INTO notifications (id, user_id, from_user_id, type, message) VALUES ($1,$2,$3,$4,$5)',
+        [uuidv4(), post.rows[0].user_id, req.user.id, 'comment', `${commenter.rows[0].name} commented on your post`]
+      );
+    }
+
     const result = await db.query(`
       SELECT c.*, u.name, u.avatar
       FROM comments c JOIN users u ON c.user_id = u.id
@@ -139,4 +160,4 @@ router.post('/:id/comments', auth, async (req, res) => {
   }
 });
 
-module.exports = router;
+module.exports = router; 
