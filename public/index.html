@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -232,7 +232,8 @@ h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
       <button class="nav-btn" onclick="navigate('profile')" id="nb-profile">👤</button>
     </div>
     <div class="topbar-right">
-      <button class="icon-btn" id="notifBtn" onclick="showToast('Notifications coming soon!')">🔔<span class="badge" id="notifBadge" style="display:none">0</span></button>
+      <!-- NOTIFICATIONS BELL - now functional -->
+      <button class="icon-btn" id="notifBtn" onclick="openNotifications()">🔔<span class="badge" id="notifBadge" style="display:none">0</span></button>
       <img id="topAvt" src="https://i.pravatar.cc/34?img=1" class="user-avt" onclick="navigate('profile')">
     </div>
   </div>
@@ -256,7 +257,7 @@ h1,h2,h3 { font-family: 'Cabinet Grotesk', sans-serif; }
         <div class="ic">🧩</div><span>Groups</span>
       </div>
       <div class="snav" onclick="window.open('https://shopmitch.com.ng', '_blank')">
-  <div class="ic">🛒</div> Marketplace
+        <div class="ic">🛒</div><span>Marketplace</span>
       </div>
       <div class="sec-title">Account</div>
       <div class="snav" onclick="logout()">
@@ -421,6 +422,9 @@ async function initApp() {
   initSocket();
   loadFeed();
   loadSuggestions();
+  loadUnreadCount();
+  // Poll for new notifications every 30 seconds
+  setInterval(loadUnreadCount, 30000);
 }
 
 function authHeader() {
@@ -445,6 +449,10 @@ function initSocket() {
   socket.on('callEnded', () => {
     closeModal();
     showToast('Call ended');
+  });
+  // Real-time notification via socket
+  socket.on('newNotification', () => {
+    loadUnreadCount();
   });
 }
 
@@ -798,6 +806,54 @@ async function saveProfile() {
   showToast('Profile updated! ✅');
 }
 
+// ── NOTIFICATIONS ──
+async function loadUnreadCount() {
+  try {
+    const res = await fetch(`${API}/api/users/notifications/unread`, { headers: authHeader() });
+    const data = await res.json();
+    const badge = document.getElementById('notifBadge');
+    if (data.count > 0) {
+      badge.textContent = data.count;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  } catch {}
+}
+
+async function openNotifications() {
+  await fetch(`${API}/api/users/notifications/read`, { method:'PUT', headers: authHeader() });
+  document.getElementById('notifBadge').style.display = 'none';
+
+  const res = await fetch(`${API}/api/users/notifications/all`, { headers: authHeader() });
+  const notifs = await res.json();
+
+  const html = notifs.length === 0
+    ? '<div style="padding:20px;text-align:center;color:var(--text3)">No notifications yet</div>'
+    : notifs.map(n => `
+        <div style="display:flex;gap:10px;padding:12px;border-bottom:1px solid var(--border);align-items:center;">
+          <img src="${n.from_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(n.from_name)}&background=6c63ff&color=fff`}"
+               style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;">${n.from_name}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px;">${n.message}</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:3px;">${formatTime(n.created_at)}</div>
+          </div>
+          <span style="font-size:18px;">${n.type==='like'?'❤️':n.type==='comment'?'💬':n.type==='friend_request'?'👥':'✅'}</span>
+        </div>`).join('');
+
+  document.getElementById('modalContainer').innerHTML = `
+    <div class="modal-ov" onclick="if(event.target===this)closeModal()">
+      <div style="background:var(--surface);border:1px solid var(--border2);border-radius:20px;width:90%;max-width:420px;max-height:70vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--surface);border-radius:20px 20px 0 0;">
+          <div style="font-size:17px;font-weight:800;">🔔 Notifications</div>
+          <button onclick="closeModal()" style="background:var(--surface2);border:none;color:var(--text);cursor:pointer;width:30px;height:30px;border-radius:50%;font-size:14px;">✕</button>
+        </div>
+        ${html}
+      </div>
+    </div>`;
+}
+
 // ── NAVIGATE ──
 function navigate(page) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -855,4 +911,4 @@ function showToast(msg) {
 if (token) { initApp(); }
 </script>
 </body>
-  </html>
+</html>
